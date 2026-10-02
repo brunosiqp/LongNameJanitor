@@ -1,0 +1,8 @@
+bin/
+obj/
+publish/
+data/
+*.user
+.vs/
+*.zip
+appsettings.local.json
