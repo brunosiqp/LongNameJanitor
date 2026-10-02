@@ -10,6 +10,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

@@ -188,7 +188,7 @@ public sealed class Stats
                     lastError = kv.Value.LastError,
                     done = saved.FolderDone.GetValueOrDefault(kv.Key.Path),
                 }).ToList(),
-                recent = saved.Recent,
+                recent = saved.Recent.ToList(), // cópia: o JSON é gerado fora do lock, enquanto a lista muda
             };
         }
     }
