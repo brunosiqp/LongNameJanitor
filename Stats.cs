@@ -4,7 +4,7 @@ using System.Text.Json;
 // Contadores e histórico do painel. Ficam salvos em data\stats.json (sobrevivem a reinícios) e cada arquivo
 // tratado vira uma linha em data\historico\aaaa-MM-dd.csv.
 public enum FolderState { Connecting, Watching, Reconnecting }
-public enum ActivityKind { Deleted, Moved, Error }
+public enum ActivityKind { Deleted, Moved, Error, Simulated }
 
 public sealed record Activity(DateTimeOffset At, string Kind, string Name, string Folder, string? Detail);
 
@@ -29,6 +29,17 @@ public sealed class Stats
         public SortedDictionary<string, int> Daily { get; set; } = [];        // "2026-10-02" -> quantidade
         public Dictionary<string, long> FolderDone { get; set; } = [];        // pasta -> quantidade
         public List<Activity> Recent { get; set; } = [];
+
+        // Verificações: cada vez que um arquivo é olhado (evento ou varredura), com o motivo de ter ficado.
+        public long Checked { get; set; }
+        public long KeptShort { get; set; }
+        public long KeptNoText { get; set; }
+        public long Simulated { get; set; }
+        public SortedDictionary<string, int> CheckedDaily { get; set; } = [];
+        public SortedDictionary<string, int> KeptShortDaily { get; set; } = [];
+        public SortedDictionary<string, int> KeptNoTextDaily { get; set; } = [];
+        public SortedDictionary<string, int> SimulatedDaily { get; set; } = [];
+        public Dictionary<string, long> FolderChecked { get; set; } = [];
     }
 
     readonly Lock gate = new();
@@ -39,6 +50,7 @@ public sealed class Stats
     readonly Dictionary<FolderRule, FolderInfo> folders = [];
     readonly int[] perMinute = new int[60];
     readonly long[] minuteStamp = new long[60];
+    readonly HashSet<string> simulatedSeen = new(StringComparer.OrdinalIgnoreCase);
     int pending;
     bool dirty;
 
@@ -124,12 +136,47 @@ public sealed class Stats
         {
             saved.Total++;
             var key = DayKey(DateTimeOffset.Now);
-            saved.Daily[key] = saved.Daily.GetValueOrDefault(key) + 1;
-            while (saved.Daily.Count > MaxDays) saved.Daily.Remove(saved.Daily.Keys.First());
+            Bump(saved.Daily, key);
             saved.FolderDone[r.Path] = saved.FolderDone.GetValueOrDefault(r.Path) + 1;
             CountMinute(MinuteNow());
             Add(new Activity(DateTimeOffset.Now, kind.ToString(), Path.GetFileName(src), r.Path, dest));
         }
+    }
+
+    public void Checked(FolderRule r, Verdict v)
+    {
+        lock (gate)
+        {
+            var key = DayKey(DateTimeOffset.Now);
+            saved.Checked++;
+            Bump(saved.CheckedDaily, key);
+            saved.FolderChecked[r.Path] = saved.FolderChecked.GetValueOrDefault(r.Path) + 1;
+            if (v == Verdict.Short) { saved.KeptShort++; Bump(saved.KeptShortDaily, key); }
+            if (v == Verdict.NoText) { saved.KeptNoText++; Bump(saved.KeptNoTextDaily, key); }
+            dirty = true;
+        }
+    }
+
+    // Modo simulação: registra o que seria apagado. Cada arquivo entra uma vez (as varreduras o veem de novo).
+    public bool Simulated(FolderRule r, string src)
+    {
+        lock (gate)
+        {
+            if (simulatedSeen.Count > 200_000) simulatedSeen.Clear();
+            if (!simulatedSeen.Add(src)) return false;
+            saved.Simulated++;
+            Bump(saved.SimulatedDaily, DayKey(DateTimeOffset.Now));
+            CountMinute(MinuteNow());
+            Add(new Activity(DateTimeOffset.Now, nameof(ActivityKind.Simulated), Path.GetFileName(src), r.Path,
+                r.IsMove ? $"Seria movido para {r.MoveTo}" : "Seria apagado"));
+            return true;
+        }
+    }
+
+    static void Bump(SortedDictionary<string, int> daily, string key)
+    {
+        daily[key] = daily.GetValueOrDefault(key) + 1;
+        while (daily.Count > MaxDays) daily.Remove(daily.Keys.First());
     }
 
     public void Failed(FolderRule r, string src, string reason)
@@ -157,7 +204,13 @@ public sealed class Stats
             var daily = Enumerable.Range(0, 30).Select(k =>
             {
                 var key = DayKey(today.AddDays(k - 29));
-                return new { day = key, count = saved.Daily.GetValueOrDefault(key) };
+                return new
+                {
+                    day = key,
+                    count = saved.Daily.GetValueOrDefault(key),
+                    simulated = saved.SimulatedDaily.GetValueOrDefault(key),
+                    @checked = saved.CheckedDaily.GetValueOrDefault(key),
+                };
             }).ToList();
             return new
             {
@@ -168,6 +221,15 @@ public sealed class Stats
                 total = saved.Total,
                 today = saved.Daily.GetValueOrDefault(DayKey(today)),
                 errors = saved.Errors,
+                dryRun = folders.Keys.Any(f => f.DryRun),
+                simulated = saved.Simulated,
+                simulatedToday = saved.SimulatedDaily.GetValueOrDefault(DayKey(today)),
+                @checked = saved.Checked,
+                checkedToday = saved.CheckedDaily.GetValueOrDefault(DayKey(today)),
+                keptShort = saved.KeptShort,
+                keptShortToday = saved.KeptShortDaily.GetValueOrDefault(DayKey(today)),
+                keptNoText = saved.KeptNoText,
+                keptNoTextToday = saved.KeptNoTextDaily.GetValueOrDefault(DayKey(today)),
                 pending = Math.Max(0, Volatile.Read(ref pending)),
                 dataDir,
                 perMinute = chart,
@@ -187,6 +249,8 @@ public sealed class Stats
                     retryAt = kv.Value.RetryAt,
                     lastError = kv.Value.LastError,
                     done = saved.FolderDone.GetValueOrDefault(kv.Key.Path),
+                    @checked = saved.FolderChecked.GetValueOrDefault(kv.Key.Path),
+                    dryRun = kv.Key.DryRun,
                 }).ToList(),
                 recent = saved.Recent.ToList(), // cópia: o JSON é gerado fora do lock, enquanto a lista muda
             };
@@ -208,7 +272,7 @@ public sealed class Stats
         {
             var file = Path.Combine(historyDir, DayKey(a.At) + ".csv");
             var header = File.Exists(file) ? "" : "﻿data_hora;acao;arquivo;pasta;detalhe\r\n";
-            var acao = a.Kind switch { "Deleted" => "Apagado", "Moved" => "Movido", _ => "Falha" };
+            var acao = a.Kind switch { "Deleted" => "Apagado", "Moved" => "Movido", "Simulated" => "Simulado", _ => "Falha" };
             File.AppendAllText(file, header + string.Join(';',
                 a.At.ToString("yyyy-MM-dd HH:mm:ss"), acao, Csv(a.Name), Csv(a.Folder), Csv(a.Detail)) + "\r\n", Encoding.UTF8);
         }

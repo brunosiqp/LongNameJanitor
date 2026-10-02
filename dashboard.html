@@ -67,6 +67,13 @@
     font-weight: 500;
   }
   .banner.show { display: block; }
+  .dry {
+    display: none; margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; gap: 12px; align-items: center;
+    background: var(--warn-soft); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  }
+  .dry.show { display: flex; }
+  .dry b { font-weight: 700; }
+  .dry span { color: var(--text); opacity: .85; }
 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
 
@@ -108,6 +115,7 @@
   .chip code { font-family: var(--mono); color: var(--accent); font-size: 11.5px; }
   .chip.del { background: var(--danger-soft); border-color: transparent; color: var(--danger); font-weight: 600; }
   .chip.mov { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
+  .chip.sim { background: var(--warn-soft); border-color: transparent; color: var(--warn); font-weight: 600; }
   .folder .meta { margin-top: 10px; color: var(--muted); font-size: 12.5px; }
   .folder .err { margin-top: 8px; color: var(--warn); font-size: 12.5px; }
 
@@ -144,6 +152,9 @@
   .badge.Deleted { background: var(--danger-soft); color: var(--danger); }
   .badge.Moved { background: var(--accent-soft); color: var(--accent); }
   .badge.Error { background: var(--warn-soft); color: var(--warn); }
+  .badge.Simulated { background: var(--warn-soft); color: var(--warn); border: 1px dashed currentColor; }
+  .split { margin-top: 2px; font-size: 12px; color: var(--faint); line-height: 1.6; }
+  .split i { font-style: normal; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
   .empty { padding: 44px 18px; text-align: center; color: var(--muted); }
   .empty svg { color: var(--faint); margin-bottom: 8px; }
 
@@ -179,12 +190,24 @@
     <div class="live"><span class="dot" id="liveDot"></span><span id="liveText">Conectando…</span></div>
   </header>
 
+  <div class="dry" id="dry">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5"/></svg>
+    <div><b>Modo simulação ligado.</b> <span>Nada está sendo apagado nem movido: os arquivos marcados como “Simulado” é que seriam.
+      Para valer de verdade, troque <code>DryRun</code> para <code>false</code> e reinicie.</span></div>
+  </div>
+
   <div class="banner" id="banner">Sem resposta do serviço. Tentando de novo…</div>
 
   <section class="kpis">
     <div class="card kpi">
+      <div class="label"><span class="ico" style="background:var(--ok-soft);color:var(--ok)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>Verificados hoje</div>
+      <div class="value" id="kChecked">–</div>
+      <div class="split" id="kKept">&nbsp;</div>
+    </div>
+    <div class="card kpi">
       <div class="label"><span class="ico" style="background:var(--danger-soft);color:var(--danger)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M6.5 7l.9 12h9.2l.9-12"/></svg></span>Removidos hoje</div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M6.5 7l.9 12h9.2l.9-12"/></svg></span><span id="lToday">Removidos hoje</span></div>
       <div class="value" id="kToday">–</div>
       <div class="hint" id="kTodayHint">&nbsp;</div>
     </div>
@@ -193,12 +216,6 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg></span>Total removido</div>
       <div class="value" id="kTotal">–</div>
       <div class="hint" id="kStarted">&nbsp;</div>
-    </div>
-    <div class="card kpi">
-      <div class="label"><span class="ico" style="background:var(--ok-soft);color:var(--ok)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg></span>Na fila</div>
-      <div class="value" id="kPending">–</div>
-      <div class="hint" id="kLast">&nbsp;</div>
     </div>
     <div class="card kpi">
       <div class="label"><span class="ico" style="background:var(--warn-soft);color:var(--warn)">
@@ -235,6 +252,7 @@
           <button data-k="" class="on">Todos</button>
           <button data-k="Deleted">Apagados</button>
           <button data-k="Moved">Movidos</button>
+          <button data-k="Simulated">Simulados</button>
           <button data-k="Error">Falhas</button>
         </div>
         <input type="search" id="q" placeholder="Buscar arquivo…">
@@ -294,22 +312,27 @@ function renderHeader(d) {
 }
 
 function renderKpis(d) {
-  $('kToday').textContent = nf.format(d.today);
+  $('dry').classList.toggle('show', d.dryRun);
+  $('kChecked').textContent = nf.format(d.checkedToday);
+  const kept = d.keptShortToday + d.keptNoTextToday;
+  $('kKept').innerHTML = `<div><i>${nf.format(kept)}</i> não apagados</div>` +
+    `<div><i>${nf.format(d.keptShortToday)}</i> nome curto · <i>${nf.format(d.keptNoTextToday)}</i> sem o texto</div>`;
+  $('kChecked').title = `${nf.format(d.checked)} verificações desde ${new Date(d.firstStart).toLocaleDateString('pt-BR')} (cada vez que um arquivo é olhado: evento ou varredura)`;
+  $('lToday').textContent = d.dryRun ? 'Seriam removidos hoje' : 'Removidos hoje';
+  $('kToday').textContent = nf.format(d.dryRun ? d.simulatedToday : d.today);
   $('kTotal').textContent = nf.format(d.total);
-  $('kPending').textContent = nf.format(d.pending);
   $('kErrors').textContent = nf.format(d.errors);
   const last60 = d.perMinute.reduce((a, b) => a + b, 0);
-  $('kTodayHint').textContent = `${nf.format(last60)} na última hora`;
-  $('kStarted').textContent = `desde ${new Date(d.firstStart).toLocaleDateString('pt-BR')}`;
+  $('kTodayHint').textContent = `${nf.format(last60)} na última hora` + (d.pending ? ` · ${nf.format(d.pending)} na fila` : '');
+  $('kStarted').textContent = `desde ${new Date(d.firstStart).toLocaleDateString('pt-BR')}` +
+    (d.simulated ? ` · ${nf.format(d.simulated)} simulados` : '');
   $('dataDir').textContent = `contagem e histórico (CSV por dia) salvos em ${d.dataDir}`;
-  const last = d.recent.find(a => a.kind !== 'Error');
-  $('kLast').textContent = last ? `último ${ago(last.at)}` : 'nenhum ainda';
 }
 
 let range = 'min';
 function renderChart(d) {
   const byDay = range === 'day';
-  const v = byDay ? d.daily.map(x => x.count) : d.perMinute;
+  const v = byDay ? d.daily.map(x => x.count + x.simulated) : d.perMinute;
   const label = i => {
     if (byDay) {
       const [y, m, dd] = d.daily[i].day.split('-');
@@ -338,6 +361,7 @@ function renderChart(d) {
 
 function rules(f) {
   const c = [];
+  if (f.dryRun) c.push(`<span class="chip sim">Simulação</span>`);
   c.push(f.action === 'Move'
     ? `<span class="chip mov">Move para ${esc(f.moveTo)}</span>`
     : `<span class="chip del">Apaga</span>`);
@@ -360,7 +384,7 @@ function renderFolders(d) {
     const err = f.state === 'Reconnecting' && f.lastError ? `<div class="err">${esc(f.lastError)}</div>` : '';
     return `<div class="folder">
       <div class="top"><span class="dot ${st.dot}"></span><span class="state">${st.label}</span>
-        <span class="count">${nf.format(f.done)} tratado${f.done === 1 ? '' : 's'}</span></div>
+        <span class="count">${nf.format(f.checked)} verificações · ${nf.format(f.done)} removido${f.done === 1 ? '' : 's'}</span></div>
       <div class="path">${esc(f.path)}</div>
       <div class="chips">${rules(f)}</div>
       <div class="meta">${meta}</div>${err}
@@ -378,7 +402,7 @@ function highlight(name, terms) {
   return html;
 }
 
-const KIND = { Deleted: 'Apagado', Moved: 'Movido', Error: 'Falha' };
+const KIND = { Deleted: 'Apagado', Moved: 'Movido', Error: 'Falha', Simulated: 'Simulado' };
 
 function renderRows(d) {
   const terms = [...new Set(d.folders.flatMap(f => f.nameContains))];
@@ -386,7 +410,10 @@ function renderRows(d) {
   const list = d.recent.filter(a => (!kind || a.kind === kind) && (!q || a.name.toLowerCase().includes(q)));
   $('rows').innerHTML = list.map(a => {
     const at = new Date(a.at);
-    const detail = a.kind === 'Moved' ? `→ ${esc(a.detail)}` : a.kind === 'Error' ? esc(a.detail) : esc(a.folder);
+    const detail = a.kind === 'Moved' ? `→ ${esc(a.detail)}`
+      : a.kind === 'Error' ? esc(a.detail)
+      : a.kind === 'Simulated' ? `${esc(a.detail)} · ${esc(a.folder)}`
+      : esc(a.folder);
     return `<tr>
       <td class="when">${tf.format(at)}<small>${ago(a.at)}</small></td>
       <td><span class="badge ${a.kind}">${KIND[a.kind] ?? a.kind}</span></td>

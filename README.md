@@ -23,6 +23,9 @@ dashboard.
 - File still being written (locked): retries for ~10 s; otherwise it counts as a failure and the next scan picks it up.
 - **Persistent counters**: total, per day and the last 300 files in `data\stats.json`; nothing resets on restart.
 - **History**: every handled file becomes a line in `data\historico\yyyy-MM-dd.csv` (opens in Excel).
+- **Checked files**: every time a file is looked at (event or rescan) it is counted, together with why it was kept
+  (name too short / missing the text), so you can see what passed through the folder and was not removed.
+- **Dry run (safe mode)**: `"DryRun": true` removes nothing; the dashboard and the history show what *would* be removed.
 - Idle cost is near zero: ~20 MB of RAM and no polling.
 
 ### Install on a server
@@ -63,7 +66,8 @@ Options: `.\install.ps1 -InstallDir D:\Apps\LongNameJanitor -Port 8080`.
         "MaxNameLength": 32,
         "CountExtension": true,
         "NameContains": [ "11222333000181" ],
-        "IncludeSubdirectories": false
+        "IncludeSubdirectories": false,
+        "DryRun": true
       }
     ]
   }
@@ -84,6 +88,7 @@ the `NameContains` texts (anywhere in the name; an empty list matches every name
 | `CountExtension` | `true` counts the extension (`report.pdf` = 10). |
 | `NameContains` | Texts the name must contain (any one is enough). |
 | `IncludeSubdirectories` | Also watch subfolders. |
+| `DryRun` | `true` = dry run: nothing is deleted or moved, matches show up as "Simulado". `Janitor:DryRun` turns it on for every folder. The example starts in dry run on purpose. |
 
 Add more blocks to `Folders` to watch more folders, then `Restart-Service LongNameJanitor`.
 Logs go to Event Viewer > Application, source `LongNameJanitor`.
@@ -112,6 +117,9 @@ caracteres e contém um texto (ex.: um CNPJ). Tem um painel no navegador que atu
 - Arquivo ainda sendo gravado (em uso): tenta por ~10 s; se não der, conta como falha e a próxima varredura pega.
 - **Contagem salva**: total, por dia e últimos 300 arquivos em `data\stats.json`; não zera ao reiniciar.
 - **Histórico**: cada arquivo tratado vira uma linha em `data\historico\aaaa-MM-dd.csv` (abre no Excel).
+- **Verificados**: cada vez que um arquivo é olhado (evento ou varredura) ele é contado, junto com o motivo de ter
+  ficado (nome curto / sem o texto). Assim dá para ver o que passou pela pasta e não foi apagado.
+- **Modo simulação (seguro)**: com `"DryRun": true` nada é apagado; o painel e o histórico mostram o que *seria* apagado.
 - Parado, quase não gasta nada: ~20 MB de memória e nenhuma varredura contínua.
 
 ### Instalar no servidor
@@ -156,6 +164,7 @@ algum dos textos de `NameContains` (em qualquer posição; lista vazia = qualque
 | `CountExtension` | `true` conta o nome com a extensão (`relatorio.pdf` = 13). |
 | `NameContains` | Textos que o nome precisa conter (basta um). |
 | `IncludeSubdirectories` | Vigia também as subpastas. |
+| `DryRun` | `true` = simulação: nada é apagado nem movido; o que bateria na regra aparece como "Simulado". `Janitor:DryRun` liga para todas as pastas. O exemplo já começa em simulação, de propósito. |
 
 Para vigiar mais pastas, adicione blocos em `Folders` e rode `Restart-Service LongNameJanitor`.
 Logs: Visualizador de Eventos > Aplicativo, origem `LongNameJanitor`.

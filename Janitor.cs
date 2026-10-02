@@ -5,7 +5,10 @@ public sealed class JanitorOptions
 {
     public List<FolderRule> Folders { get; set; } = [];
     public int RescanMinutes { get; set; } = 5;
+    public bool DryRun { get; set; } = false;            // true = simulação em todas as pastas
 }
+
+public enum Verdict { Match, Short, NoText }
 
 public sealed class FolderRule
 {
@@ -16,6 +19,7 @@ public sealed class FolderRule
     public bool CountExtension { get; set; } = true;     // "relatorio.pdf" conta 13 ou 9?
     public List<string> NameContains { get; set; } = []; // vazio = qualquer nome; senão precisa conter um deles
     public bool IncludeSubdirectories { get; set; } = false;
+    public bool DryRun { get; set; } = false;            // simulação: só mostra o que seria apagado/movido
 
     public bool IsMove => Action.Equals("Move", StringComparison.OrdinalIgnoreCase);
 }
@@ -37,6 +41,8 @@ public sealed class Janitor(IOptions<JanitorOptions> opt, Stats stats, ILogger<J
         }
         foreach (var r in o.Folders)
         {
+            if (o.DryRun) r.DryRun = true;
+            if (r.DryRun) log.LogWarning("MODO SIMULAÇÃO em {Path}: nada será apagado nem movido", r.Path);
             if (r.IsMove && string.IsNullOrWhiteSpace(r.MoveTo))
                 throw new InvalidOperationException($"{r.Path}: Action=Move precisa de MoveTo");
             stats.Register(r);
@@ -109,17 +115,25 @@ public sealed class Janitor(IOptions<JanitorOptions> opt, Stats stats, ILogger<J
     {
         if (r.IsMove && path.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(r.MoveTo)) + Path.DirectorySeparatorChar,
                 StringComparison.OrdinalIgnoreCase)) return;
-        if (!Matches(path, r)) return;
+        var verdict = Classify(path, r);
+        stats.Checked(r, verdict);
+        if (verdict != Verdict.Match) return;
+        if (r.DryRun)
+        {
+            if (stats.Simulated(r, path)) log.LogInformation("Simulação, seria {Action}: {Src}", r.IsMove ? "movido" : "apagado", path);
+            return;
+        }
         stats.Queued();
         queue.Writer.TryWrite((path, r));
     }
 
-    static bool Matches(string path, FolderRule r)
+    static Verdict Classify(string path, FolderRule r)
     {
         var name = Path.GetFileName(path);
         var counted = r.CountExtension ? name : Path.GetFileNameWithoutExtension(path);
-        if (counted.Length <= r.MaxNameLength) return false;
-        return r.NameContains.Count == 0 || r.NameContains.Any(s => name.Contains(s, StringComparison.OrdinalIgnoreCase));
+        if (counted.Length <= r.MaxNameLength) return Verdict.Short;
+        return r.NameContains.Count == 0 || r.NameContains.Any(s => name.Contains(s, StringComparison.OrdinalIgnoreCase))
+            ? Verdict.Match : Verdict.NoText;
     }
 
     async Task Handle(string path, FolderRule r, CancellationToken ct)
