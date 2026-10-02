@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish -c Release -o publish
+          Remove-Item publish\*.pdb, publish\aspnetcorev2_inprocess.dll -ErrorAction SilentlyContinue
+          if (Test-Path publish\appsettings.local.json) { throw "appsettings.local.json must never ship" }
+          Compress-Archive publish\* LongNameJanitor-win-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LongNameJanitor-win-x64
+          path: publish/
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" LongNameJanitor-win-x64.zip --title "${{ github.ref_name }}" --generate-notes
