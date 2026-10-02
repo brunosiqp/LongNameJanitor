@@ -396,7 +396,7 @@ function rules(f) {
   c.push(f.action === 'Move'
     ? `<span class="chip mov">Move para ${esc(f.moveTo)}</span>`
     : `<span class="chip del">Apaga</span>`);
-  c.push(`<span class="chip">nome com <b>mais de ${f.maxNameLength}</b> caracteres${f.countExtension ? '' : ' (sem extensão)'}</span>`);
+  c.push(`<span class="chip">nome com <b>${f.maxNameLength + 1} ou mais</b> caracteres${f.countExtension ? '' : ' (sem extensão)'}</span>`);
   if (f.nameContains.length)
     c.push(`<span class="chip">e contém ${f.nameContains.map(s => `<code>${esc(s)}</code>`).join(' ou ')}</span>`);
   if (f.includeSubdirectories) c.push(`<span class="chip">inclui subpastas</span>`);
