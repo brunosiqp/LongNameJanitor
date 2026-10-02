@@ -31,6 +31,7 @@ public sealed class Stats
         public List<Activity> Recent { get; set; } = [];
 
         // Verificações: cada vez que um arquivo é olhado (evento ou varredura), com o motivo de ter ficado.
+        public DateTimeOffset? CheckedSince { get; set; }                     // versões antigas não contavam
         public long Checked { get; set; }
         public long KeptShort { get; set; }
         public long KeptNoText { get; set; }
@@ -62,6 +63,7 @@ public sealed class Stats
         historyDir = Path.Combine(dataDir, "historico");
         Directory.CreateDirectory(historyDir);
         saved = Load();
+        if (saved.CheckedSince is null) { saved.CheckedSince = DateTimeOffset.Now; dirty = true; }
         foreach (var a in saved.Recent.Where(a => a.Kind != nameof(ActivityKind.Error)))
             CountMinute(a.At.ToUnixTimeSeconds() / 60);
     }
@@ -225,6 +227,7 @@ public sealed class Stats
                 simulated = saved.Simulated,
                 simulatedToday = saved.SimulatedDaily.GetValueOrDefault(DayKey(today)),
                 @checked = saved.Checked,
+                checkedSince = saved.CheckedSince,
                 checkedToday = saved.CheckedDaily.GetValueOrDefault(DayKey(today)),
                 keptShort = saved.KeptShort,
                 keptShortToday = saved.KeptShortDaily.GetValueOrDefault(DayKey(today)),

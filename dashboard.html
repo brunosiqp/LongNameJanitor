@@ -342,7 +342,11 @@ function renderKpis(d) {
   $('dry').classList.toggle('show', d.dryRun);
   $('kChecked').textContent = nf.format(d.checkedToday);
   const kept = d.keptShortToday + d.keptNoTextToday;
-  $('kKept').innerHTML = `<div><i>${nf.format(kept)}</i> não apagados</div>` +
+  // Contagem de verificados começou depois do primeiro uso (versão antiga): diz desde quando.
+  const since = new Date(d.checkedSince), late = since - new Date(d.firstStart) > 60000;
+  const sinceTxt = late && since.toDateString() === new Date().toDateString()
+    ? ` · <span title="A versão anterior não contava verificações">contando desde ${tf.format(since).slice(0, 5)}</span>` : '';
+  $('kKept').innerHTML = `<div><i>${nf.format(kept)}</i> não apagados${sinceTxt}</div>` +
     `<div><i>${nf.format(d.keptShortToday)}</i> nome curto · <i>${nf.format(d.keptNoTextToday)}</i> sem o texto</div>`;
   $('kChecked').title = `${nf.format(d.checked)} verificações desde ${new Date(d.firstStart).toLocaleDateString('pt-BR')} (cada vez que um arquivo é olhado: evento ou varredura)`;
   $('lToday').textContent = d.dryRun ? 'Seriam removidos hoje' : 'Removidos hoje';
