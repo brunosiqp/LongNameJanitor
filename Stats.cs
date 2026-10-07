@@ -6,7 +6,7 @@ using System.Text.Json;
 public enum FolderState { Connecting, Watching, Reconnecting }
 public enum ActivityKind { Deleted, Moved, Error, Simulated }
 
-public sealed record Activity(DateTimeOffset At, string Kind, string Name, string Folder, string? Detail);
+public sealed record Activity(DateTimeOffset At, string Kind, string Name, string Folder, string? Detail, string? Reason = null);
 
 public sealed class Stats
 {
@@ -36,6 +36,8 @@ public sealed class Stats
         public long KeptShort { get; set; }
         public long KeptNoText { get; set; }
         public long Simulated { get; set; }
+        public long Duplicates { get; set; }                                  // removidos por NF repetida
+        public SortedDictionary<string, int> DuplicatesDaily { get; set; } = [];
         public SortedDictionary<string, int> CheckedDaily { get; set; } = [];
         public SortedDictionary<string, int> KeptShortDaily { get; set; } = [];
         public SortedDictionary<string, int> KeptNoTextDaily { get; set; } = [];
@@ -47,6 +49,7 @@ public sealed class Stats
     readonly DateTimeOffset started = DateTimeOffset.Now;
     readonly string dataDir, statePath, historyDir;
     readonly ILogger<Stats> log;
+    readonly NfCache nfCache;
     readonly Saved saved;
     readonly Dictionary<FolderRule, FolderInfo> folders = [];
     readonly int[] perMinute = new int[60];
@@ -55,9 +58,10 @@ public sealed class Stats
     int pending;
     bool dirty;
 
-    public Stats(IConfiguration config, ILogger<Stats> log)
+    public Stats(IConfiguration config, NfCache nfCache, ILogger<Stats> log)
     {
         this.log = log;
+        this.nfCache = nfCache;
         dataDir = Path.GetFullPath(config["Janitor:DataPath"] ?? "data", AppContext.BaseDirectory);
         statePath = Path.Combine(dataDir, "stats.json");
         historyDir = Path.Combine(dataDir, "historico");
@@ -132,16 +136,17 @@ public sealed class Stats
     public void Queued() => Interlocked.Increment(ref pending);
     public void Dequeued() => Interlocked.Decrement(ref pending);
 
-    public void Done(FolderRule r, ActivityKind kind, string src, string? dest)
+    public void Done(FolderRule r, ActivityKind kind, string src, string? dest, string reason, bool duplicate)
     {
         lock (gate)
         {
             saved.Total++;
             var key = DayKey(DateTimeOffset.Now);
             Bump(saved.Daily, key);
+            if (duplicate) { saved.Duplicates++; Bump(saved.DuplicatesDaily, key); }
             saved.FolderDone[r.Path] = saved.FolderDone.GetValueOrDefault(r.Path) + 1;
             CountMinute(MinuteNow());
-            Add(new Activity(DateTimeOffset.Now, kind.ToString(), Path.GetFileName(src), r.Path, dest));
+            Add(new Activity(DateTimeOffset.Now, kind.ToString(), Path.GetFileName(src), r.Path, dest, reason));
         }
     }
 
@@ -160,7 +165,7 @@ public sealed class Stats
     }
 
     // Modo simulação: registra o que seria apagado. Cada arquivo entra uma vez (as varreduras o veem de novo).
-    public bool Simulated(FolderRule r, string src)
+    public bool Simulated(FolderRule r, string src, string reason, bool duplicate)
     {
         lock (gate)
         {
@@ -170,7 +175,7 @@ public sealed class Stats
             Bump(saved.SimulatedDaily, DayKey(DateTimeOffset.Now));
             CountMinute(MinuteNow());
             Add(new Activity(DateTimeOffset.Now, nameof(ActivityKind.Simulated), Path.GetFileName(src), r.Path,
-                r.IsMove ? $"Seria movido para {r.MoveTo}" : "Seria apagado"));
+                r.IsMove ? $"Seria movido para {r.MoveTo}" : "Seria apagado", reason));
             return true;
         }
     }
@@ -223,6 +228,10 @@ public sealed class Stats
                 total = saved.Total,
                 today = saved.Daily.GetValueOrDefault(DayKey(today)),
                 errors = saved.Errors,
+                duplicates = saved.Duplicates,
+                duplicatesToday = saved.DuplicatesDaily.GetValueOrDefault(DayKey(today)),
+                nfCache = nfCache.Count,
+                nfCacheDays = nfCache.Days,
                 dryRun = folders.Keys.Any(f => f.DryRun),
                 simulated = saved.Simulated,
                 simulatedToday = saved.SimulatedDaily.GetValueOrDefault(DayKey(today)),
@@ -254,6 +263,7 @@ public sealed class Stats
                     done = saved.FolderDone.GetValueOrDefault(kv.Key.Path),
                     @checked = saved.FolderChecked.GetValueOrDefault(kv.Key.Path),
                     dryRun = kv.Key.DryRun,
+                    deleteDuplicateNf = kv.Key.DeleteDuplicateNf,
                 }).ToList(),
                 recent = saved.Recent.ToList(), // cópia: o JSON é gerado fora do lock, enquanto a lista muda
             };
@@ -277,7 +287,8 @@ public sealed class Stats
             var header = File.Exists(file) ? "" : "﻿data_hora;acao;arquivo;pasta;detalhe\r\n";
             var acao = a.Kind switch { "Deleted" => "Apagado", "Moved" => "Movido", "Simulated" => "Simulado", _ => "Falha" };
             File.AppendAllText(file, header + string.Join(';',
-                a.At.ToString("yyyy-MM-dd HH:mm:ss"), acao, Csv(a.Name), Csv(a.Folder), Csv(a.Detail)) + "\r\n", Encoding.UTF8);
+                a.At.ToString("yyyy-MM-dd HH:mm:ss"), acao, Csv(a.Name), Csv(a.Folder),
+                Csv(string.Join(" · ", new[] { a.Reason, a.Detail }.Where(x => !string.IsNullOrEmpty(x))))) + "\r\n", Encoding.UTF8);
         }
         catch (Exception ex) { log.LogError(ex, "Não deu para gravar o histórico em {Dir}", historyDir); }
     }
@@ -290,12 +301,12 @@ public sealed class Stats
 }
 
 // Salva o stats.json a cada 5 s quando algo mudou, e uma última vez ao parar o serviço.
-public sealed class StatsSaver(Stats stats) : BackgroundService
+public sealed class StatsSaver(Stats stats, NfCache nfCache) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         using var t = new PeriodicTimer(TimeSpan.FromSeconds(5));
-        try { while (await t.WaitForNextTickAsync(ct)) stats.Save(); }
+        try { while (await t.WaitForNextTickAsync(ct)) { stats.Save(); nfCache.Save(); } }
         catch (OperationCanceledException) { }
     }
 
@@ -303,5 +314,6 @@ public sealed class StatsSaver(Stats stats) : BackgroundService
     {
         await base.StopAsync(ct);
         stats.Save();
+        nfCache.Save();
     }
 }

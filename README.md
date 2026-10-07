@@ -25,6 +25,9 @@ dashboard.
 - **History**: every handled file becomes a line in `data\historico\yyyy-MM-dd.csv` (opens in Excel).
 - **Checked files**: every time a file is looked at (event or rescan) it is counted, together with why it was kept
   (name too short / missing the text), so you can see what passed through the folder and was not removed.
+- **Duplicate document number**: among files that contain the text, the first file for each number (e.g. NF
+  `4815322` in `NF4815322_55_R_A_0…xml`) stays and any other file for the same number is removed right away. The
+  numbers live in `data\nf-cache.json` (auto-saved) and expire after `NfCacheDays` without being seen.
 - **Dry run (safe mode)**: `"DryRun": true` removes nothing; the dashboard and the history show what *would* be removed.
 - Idle cost is near zero: ~20 MB of RAM and no polling.
 
@@ -67,6 +70,8 @@ Options: `.\install.ps1 -InstallDir D:\Apps\LongNameJanitor -Port 8080`.
         "CountExtension": true,
         "NameContains": [ "11222333000181" ],
         "IncludeSubdirectories": false,
+        "DeleteDuplicateNf": true,
+        "NfPattern": "^NF0*(\\d+)_",
         "DryRun": true
       }
     ]
@@ -82,12 +87,15 @@ the `NameContains` texts (anywhere in the name; an empty list matches every name
 | `Urls` | Dashboard address. `http://*:5080` accepts other machines. |
 | `Janitor:RescanMinutes` | Safety rescan interval. |
 | `Janitor:DataPath` | Where counters and history are saved (default: `data` next to the .exe). |
+| `Janitor:NfCacheDays` | Days a document number stays in the cache without being seen (default 30). |
 | `Path` | Watched folder. In JSON every `\` becomes `\\`. Always use `\\server\...`: services cannot see mapped drives (`Z:\`). |
 | `Action` | `Delete` or `Move` (to `MoveTo`; name clashes get a `_yyyyMMdd_HHmmssfff` suffix). |
 | `MaxNameLength` | Maximum name length. |
 | `CountExtension` | `true` counts the extension (`report.pdf` = 10). |
 | `NameContains` | Texts the name must contain (any one is enough). |
 | `IncludeSubdirectories` | Also watch subfolders. |
+| `DeleteDuplicateNf` | Remove other files for a document number already seen (only files that contain `NameContains`; the oldest one stays). |
+| `NfPattern` | Regex whose group 1 is the document number. Default `^NF0*(\d+)_` (leading zeros ignored). |
 | `DryRun` | `true` = dry run: nothing is deleted or moved, matches show up as "Simulado". `Janitor:DryRun` turns it on for every folder. The example starts in dry run on purpose. |
 
 Add more blocks to `Folders` to watch more folders, then `Restart-Service LongNameJanitor`.
@@ -119,6 +127,9 @@ caracteres e contém um texto (ex.: um CNPJ). Tem um painel no navegador que atu
 - **Histórico**: cada arquivo tratado vira uma linha em `data\historico\aaaa-MM-dd.csv` (abre no Excel).
 - **Verificados**: cada vez que um arquivo é olhado (evento ou varredura) ele é contado, junto com o motivo de ter
   ficado (nome curto / sem o texto). Assim dá para ver o que passou pela pasta e não foi apagado.
+- **NF repetida**: entre os arquivos que contêm o texto, o primeiro arquivo de cada NF (ex.: `4815322` em
+  `NF4815322_55_R_A_0…xml`) fica e qualquer outro arquivo da mesma NF é apagado na hora. As NFs ficam em
+  `data\nf-cache.json` (salvo sozinho) e saem depois de `NfCacheDays` dias sem aparecer.
 - **Modo simulação (seguro)**: com `"DryRun": true` nada é apagado; o painel e o histórico mostram o que *seria* apagado.
 - Parado, quase não gasta nada: ~20 MB de memória e nenhuma varredura contínua.
 
@@ -158,12 +169,15 @@ algum dos textos de `NameContains` (em qualquer posição; lista vazia = qualque
 | `Urls` | Endereço do painel. `http://*:5080` aceita acesso de outras máquinas. |
 | `Janitor:RescanMinutes` | Intervalo da varredura de segurança. |
 | `Janitor:DataPath` | Onde salvar contagem e histórico (padrão: `data` ao lado do .exe). |
+| `Janitor:NfCacheDays` | Dias que uma NF fica no cache sem aparecer (padrão 30). |
 | `Path` | Pasta vigiada. Em JSON cada `\` vira `\\`. Use sempre `\\servidor\...`: serviços não enxergam unidades mapeadas (`Z:\`). |
 | `Action` | `Delete` (apaga) ou `Move` (move para `MoveTo`; nome repetido ganha `_aaaaMMdd_HHmmssfff`). |
 | `MaxNameLength` | Tamanho máximo do nome. |
 | `CountExtension` | `true` conta o nome com a extensão (`relatorio.pdf` = 13). |
 | `NameContains` | Textos que o nome precisa conter (basta um). |
 | `IncludeSubdirectories` | Vigia também as subpastas. |
+| `DeleteDuplicateNf` | Apaga outros arquivos de uma NF já vista (só arquivos que contêm `NameContains`; o mais antigo fica). |
+| `NfPattern` | Regex cujo grupo 1 é o número da NF. Padrão `^NF0*(\d+)_` (zeros à esquerda ignorados). |
 | `DryRun` | `true` = simulação: nada é apagado nem movido; o que bateria na regra aparece como "Simulado". `Janitor:DryRun` liga para todas as pastas. O exemplo já começa em simulação, de propósito. |
 
 Para vigiar mais pastas, adicione blocos em `Folders` e rode `Restart-Service LongNameJanitor`.

@@ -164,6 +164,8 @@
   .file { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
   .file mark { background: var(--accent-soft); color: var(--accent); border-radius: 3px; padding: 0 2px; }
   .detail { color: var(--faint); font-size: 12px; margin-top: 2px; word-break: break-all; }
+  .why { color: var(--muted); font-weight: 600; }
+  .why.dup { color: var(--accent); }
   .badge {
     display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 9px;
     border-radius: 999px; white-space: nowrap;
@@ -354,7 +356,9 @@ function renderKpis(d) {
   $('kTotal').textContent = nf.format(d.total);
   $('kErrors').textContent = nf.format(d.errors);
   const last60 = d.perMinute.reduce((a, b) => a + b, 0);
-  $('kTodayHint').textContent = `${nf.format(last60)} na última hora` + (d.pending ? ` · ${nf.format(d.pending)} na fila` : '');
+  $('kTodayHint').textContent = `${nf.format(last60)} na última hora` +
+    (d.duplicatesToday ? ` · ${nf.format(d.duplicatesToday)} por NF repetida` : '') +
+    (d.pending ? ` · ${nf.format(d.pending)} na fila` : '');
   $('kStarted').textContent = `desde ${new Date(d.firstStart).toLocaleDateString('pt-BR')}` +
     (d.simulated ? ` · ${nf.format(d.simulated)} simulados` : '');
   $('dataDir').textContent = `contagem e histórico (CSV por dia) salvos em ${d.dataDir}`;
@@ -399,6 +403,7 @@ function rules(f) {
   c.push(`<span class="chip">nome com <b>${f.maxNameLength + 1} ou mais</b> caracteres${f.countExtension ? '' : ' (sem extensão)'}</span>`);
   if (f.nameContains.length)
     c.push(`<span class="chip">e contém ${f.nameContains.map(s => `<code>${esc(s)}</code>`).join(' ou ')}</span>`);
+  if (f.deleteDuplicateNf) c.push(`<span class="chip">e <b>NF repetida</b> (mesmo número já visto)</span>`);
   if (f.includeSubdirectories) c.push(`<span class="chip">inclui subpastas</span>`);
   return c.join('');
 }
@@ -408,7 +413,8 @@ function renderFolders(d) {
   $('folders').innerHTML = d.folders.map(f => {
     const st = STATE[f.state] ?? STATE.Connecting;
     const meta = f.state === 'Watching'
-      ? `Vigiando há ${span(f.since)} · última varredura ${ago(f.lastScan)}`
+      ? `Vigiando há ${span(f.since)} · última varredura ${ago(f.lastScan)}` +
+        (f.deleteDuplicateNf ? ` · ${nf.format(data.nfCache)} NFs no cache (${data.nfCacheDays} dias)` : '')
       : f.state === 'Reconnecting' && f.retryAt
         ? `Sem acesso há ${span(f.since)} · nova tentativa em ${until(f.retryAt)}`
         : 'Abrindo a pasta…';
@@ -441,10 +447,11 @@ function renderRows(d) {
   const list = d.recent.filter(a => (!kind || a.kind === kind) && (!q || a.name.toLowerCase().includes(q)));
   $('rows').innerHTML = list.map(a => {
     const at = new Date(a.at);
-    const detail = a.kind === 'Moved' ? `→ ${esc(a.detail)}`
+    const why = a.reason ? `<span class="why${a.reason.startsWith('NF ') ? ' dup' : ''}">${esc(a.reason)}</span> · ` : '';
+    const detail = a.kind === 'Moved' ? `${why}→ ${esc(a.detail)}`
       : a.kind === 'Error' ? esc(a.detail)
-      : a.kind === 'Simulated' ? `${esc(a.detail)} · ${esc(a.folder)}`
-      : esc(a.folder);
+      : a.kind === 'Simulated' ? `${why}${esc(a.detail)} · ${esc(a.folder)}`
+      : `${why}${esc(a.folder)}`;
     return `<tr>
       <td class="when">${tf.format(at)}<small>${ago(a.at)}</small></td>
       <td><span class="badge ${a.kind}">${KIND[a.kind] ?? a.kind}</span></td>

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 
@@ -8,7 +9,7 @@ public sealed class JanitorOptions
     public bool DryRun { get; set; } = false;            // true = simulação em todas as pastas
 }
 
-public enum Verdict { Match, Short, NoText }
+public enum Verdict { Match, Short, NoText, DuplicateNf }
 
 public sealed class FolderRule
 {
@@ -21,16 +22,24 @@ public sealed class FolderRule
     public bool IncludeSubdirectories { get; set; } = false;
     public bool DryRun { get; set; } = false;            // simulação: só mostra o que seria apagado/movido
 
+    // NF repetida: entre os arquivos que contêm NameContains, guarda a NF do primeiro que fica na pasta e
+    // trata (apaga/move) qualquer outro arquivo com a mesma NF. O grupo 1 do padrão é o número da NF.
+    public bool DeleteDuplicateNf { get; set; } = false;
+    public string NfPattern { get; set; } = @"^NF0*(\d+)_";
+
+    Regex? nfRegex;
+    public Regex NfRegex => nfRegex ??= new Regex(NfPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     public bool IsMove => Action.Equals("Move", StringComparison.OrdinalIgnoreCase);
 }
 
-public sealed class Janitor(IOptions<JanitorOptions> opt, Stats stats, ILogger<Janitor> log) : BackgroundService
+public sealed class Janitor(IOptions<JanitorOptions> opt, Stats stats, NfCache nfCache, ILogger<Janitor> log) : BackgroundService
 {
     static readonly TimeSpan MinRetry = TimeSpan.FromSeconds(5), MaxRetry = TimeSpan.FromMinutes(5);
 
     readonly JanitorOptions o = opt.Value;
-    readonly Channel<(string Path, FolderRule Rule)> queue =
-        Channel.CreateUnbounded<(string, FolderRule)>(new() { SingleReader = true });
+    readonly Channel<(string Path, FolderRule Rule, string Reason, bool Duplicate)> queue =
+        Channel.CreateUnbounded<(string, FolderRule, string, bool)>(new() { SingleReader = true });
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -48,10 +57,10 @@ public sealed class Janitor(IOptions<JanitorOptions> opt, Stats stats, ILogger<J
             stats.Register(r);
             _ = Supervise(r, ct);
         }
-        await foreach (var (path, rule) in queue.Reader.ReadAllAsync(ct))
+        await foreach (var (path, rule, reason, duplicate) in queue.Reader.ReadAllAsync(ct))
         {
             stats.Dequeued();
-            await Handle(path, rule, ct);
+            await Handle(path, rule, reason, duplicate, ct);
         }
     }
 
@@ -107,7 +116,9 @@ public sealed class Janitor(IOptions<JanitorOptions> opt, Stats stats, ILogger<J
     void Scan(FolderRule r)
     {
         var eo = new EnumerationOptions { RecurseSubdirectories = r.IncludeSubdirectories, IgnoreInaccessible = true, AttributesToSkip = 0 };
-        foreach (var f in Directory.EnumerateFiles(r.Path, "*", eo)) Enqueue(f, r);
+        // Do mais antigo para o mais novo: com NF repetida, fica o primeiro documento que chegou.
+        var files = new DirectoryInfo(r.Path).EnumerateFiles("*", eo).OrderBy(f => f.CreationTimeUtc).Select(f => f.FullName).ToList();
+        foreach (var f in files) Enqueue(f, r);
         stats.Scanned(r);
     }
 
@@ -115,28 +126,45 @@ public sealed class Janitor(IOptions<JanitorOptions> opt, Stats stats, ILogger<J
     {
         if (r.IsMove && path.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(r.MoveTo)) + Path.DirectorySeparatorChar,
                 StringComparison.OrdinalIgnoreCase)) return;
-        var verdict = Classify(path, r);
+        var name = Path.GetFileName(path);
+        var verdict = Classify(name, r);
+        var reason = $"nome com {r.MaxNameLength + 1}+ caracteres";
+
+        // Ficaria na pasta pelo tamanho: confere se é outro documento para uma NF já vista.
+        if (verdict == Verdict.Short && r.DeleteDuplicateNf && HasText(name, r) && r.NfRegex.Match(name) is { Success: true } m)
+        {
+            var nf = m.Groups[1].Value.TrimStart('0') is { Length: > 0 } n ? n : "0";
+            if (nfCache.Register(nf, name) is { } first)
+            {
+                verdict = Verdict.DuplicateNf;
+                reason = $"NF {nf} repetida (primeiro: {first})";
+            }
+        }
+
         stats.Checked(r, verdict);
-        if (verdict != Verdict.Match) return;
+        if (verdict is not (Verdict.Match or Verdict.DuplicateNf)) return;
+        var duplicate = verdict == Verdict.DuplicateNf;
         if (r.DryRun)
         {
-            if (stats.Simulated(r, path)) log.LogInformation("Simulação, seria {Action}: {Src}", r.IsMove ? "movido" : "apagado", path);
+            if (stats.Simulated(r, path, reason, duplicate))
+                log.LogInformation("Simulação, seria {Action} ({Reason}): {Src}", r.IsMove ? "movido" : "apagado", reason, path);
             return;
         }
         stats.Queued();
-        queue.Writer.TryWrite((path, r));
+        queue.Writer.TryWrite((path, r, reason, duplicate));
     }
 
-    static Verdict Classify(string path, FolderRule r)
+    static bool HasText(string name, FolderRule r) =>
+        r.NameContains.Count == 0 || r.NameContains.Any(s => name.Contains(s, StringComparison.OrdinalIgnoreCase));
+
+    static Verdict Classify(string name, FolderRule r)
     {
-        var name = Path.GetFileName(path);
-        var counted = r.CountExtension ? name : Path.GetFileNameWithoutExtension(path);
+        var counted = r.CountExtension ? name : Path.GetFileNameWithoutExtension(name);
         if (counted.Length <= r.MaxNameLength) return Verdict.Short;
-        return r.NameContains.Count == 0 || r.NameContains.Any(s => name.Contains(s, StringComparison.OrdinalIgnoreCase))
-            ? Verdict.Match : Verdict.NoText;
+        return HasText(name, r) ? Verdict.Match : Verdict.NoText;
     }
 
-    async Task Handle(string path, FolderRule r, CancellationToken ct)
+    async Task Handle(string path, FolderRule r, string reason, bool duplicate, CancellationToken ct)
     {
         // Arquivo ainda sendo copiado fica travado: tenta por ~10 s; se não der, a próxima varredura pega.
         for (int i = 0; i < 20; i++)
@@ -148,14 +176,14 @@ public sealed class Janitor(IOptions<JanitorOptions> opt, Stats stats, ILogger<J
                 {
                     var dest = UniqueDest(r.MoveTo, Path.GetFileName(path));
                     File.Move(path, dest);
-                    log.LogInformation("Movido: {Src} -> {Dest}", path, dest);
-                    stats.Done(r, ActivityKind.Moved, path, dest);
+                    log.LogInformation("Movido ({Reason}): {Src} -> {Dest}", reason, path, dest);
+                    stats.Done(r, ActivityKind.Moved, path, dest, reason, duplicate);
                 }
                 else
                 {
                     File.Delete(path);
-                    log.LogInformation("Apagado: {Src}", path);
-                    stats.Done(r, ActivityKind.Deleted, path, null);
+                    log.LogInformation("Apagado ({Reason}): {Src}", reason, path);
+                    stats.Done(r, ActivityKind.Deleted, path, null, reason, duplicate);
                 }
                 return;
             }

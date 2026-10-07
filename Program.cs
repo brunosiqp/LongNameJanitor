@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true).AddCommandLine(args);
 builder.Services.AddWindowsService(o => o.ServiceName = "LongNameJanitor");
 builder.Services.Configure<JanitorOptions>(builder.Configuration.GetSection("Janitor"));
+builder.Services.AddSingleton<NfCache>();
 builder.Services.AddSingleton<Stats>();
 builder.Services.AddHostedService<Janitor>();
 builder.Services.AddHostedService<StatsSaver>();
