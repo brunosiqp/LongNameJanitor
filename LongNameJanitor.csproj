@@ -11,6 +11,7 @@
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefaultItemExcludes>$(DefaultItemExcludes);publish\**;data\**;*.zip</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

@@ -98,7 +98,7 @@ $status = $null
 foreach ($i in 1..15) {
     Start-Sleep 2
     try { $status = Invoke-RestMethod "http://localhost:$Port/api/status" -TimeoutSec 3 } catch { continue }
-    if (-not ($status.folders | Where-Object state -eq 'Connecting')) { break }
+    if (-not ($status.folders | Where-Object { $_.state -eq 'Connecting' -or $_.processedState -eq 'Connecting' })) { break }
 }
 
 if (-not $status) {
@@ -109,13 +109,28 @@ if (-not $status) {
 if (-not $status.folders) {
     Write-Host "  Nenhuma pasta configurada em $InstallDir\appsettings.local.json" -ForegroundColor Yellow
 }
-foreach ($f in $status.folders) {
-    if ($f.state -eq 'Watching') {
-        Write-Host "  OK  $($f.path)" -ForegroundColor Green
-    } else {
-        Write-Host "  SEM ACESSO  $($f.path)" -ForegroundColor Yellow
-        Write-Host "      $($f.lastError)" -ForegroundColor Yellow
-        Write-Host "      Confira se a conta do serviço tem permissão na pasta. Ele tenta de novo sozinho." -ForegroundColor Yellow
+function Show-Folder($label, $path, $state, $err) {
+    switch ($state) {
+        'Watching' { Write-Host "  OK          $label $path" -ForegroundColor Green }
+        'Off'      { Write-Host "  DESLIGADA   $label $path" -ForegroundColor DarkGray }
+        'Paused'   { Write-Host "  PAUSADA     $label $path (retome pelo painel)" -ForegroundColor DarkGray }
+        'Invalid'  { Write-Host "  INVÁLIDA    $label $path" -ForegroundColor Red; Write-Host "              $err" -ForegroundColor Red }
+        default {
+            Write-Host "  SEM ACESSO  $label $path" -ForegroundColor Yellow
+            Write-Host "              $err" -ForegroundColor Yellow
+            Write-Host "              Confira se a conta do serviço tem permissão na pasta. Ele tenta de novo sozinho." -ForegroundColor Yellow
+        }
     }
 }
+foreach ($f in $status.folders) {
+    Show-Folder 'pasta:     ' $f.path $f.state $f.lastError
+    if ($f.processedPath) { Show-Folder 'processados:' $f.processedPath $f.processedState $f.processedError }
+}
+if ($status.dryRun) { Write-Host "`n  MODO SIMULAÇÃO: nada é apagado nem movido até sair da simulação no painel." -ForegroundColor Yellow }
+
 Write-Host "`nPainel: http://$($env:COMPUTERNAME):$Port" -ForegroundColor Cyan
+$keyFile = Join-Path $InstallDir 'data\admin-key.txt'
+if (Test-Path $keyFile) {
+    Write-Host "Chave de administrador do painel (pausar, simulação, editar pastas): $((Get-Content $keyFile -Raw).Trim())" -ForegroundColor Cyan
+    Write-Host "  Fica em $keyFile; para trocar, apague o arquivo e reinicie o serviço." -ForegroundColor DarkGray
+}

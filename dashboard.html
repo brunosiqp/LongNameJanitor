@@ -13,6 +13,7 @@
     --ok: #12a46b; --ok-soft: #e6f6ef;
     --warn: #c27c0e; --warn-soft: #fdf3e2;
     --danger: #d63c5c; --danger-soft: #fdecef;
+    --violet: #7c5cdb; --violet-soft: #f1ecfd;
     --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
     --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
     color-scheme: light;
@@ -26,6 +27,7 @@
       --ok: #3ccf91; --ok-soft: #12271f;
       --warn: #f2b33d; --warn-soft: #2b2312;
       --danger: #ff6b86; --danger-soft: #2d1820;
+      --violet: #a78bfa; --violet-soft: #231c3a;
       --shadow: none;
       color-scheme: dark;
     }
@@ -37,18 +39,21 @@
     --ok: #3ccf91; --ok-soft: #12271f;
     --warn: #f2b33d; --warn-soft: #2b2312;
     --danger: #ff6b86; --danger-soft: #2d1820;
+    --violet: #a78bfa; --violet-soft: #231c3a;
     --shadow: none;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
     font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 48px; }
+  button { font: inherit; }
 
-  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
   .logo {
     width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
     background: linear-gradient(140deg, var(--accent), #8b5cf6); color: #fff; flex: none;
@@ -61,11 +66,12 @@
     font-size: 13px; color: var(--muted); box-shadow: var(--shadow);
   }
   .live b { color: var(--text); font-weight: 600; }
-  .theme {
+  .round {
     width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; cursor: pointer;
     background: var(--surface); border: 1px solid var(--border); color: var(--muted); box-shadow: var(--shadow);
   }
-  .theme:hover { color: var(--text); border-color: var(--faint); }
+  .round:hover { color: var(--text); border-color: var(--faint); }
+  .round.on { color: var(--violet); border-color: var(--violet); background: var(--violet-soft); }
   .theme svg { display: none; }
   :root:not([data-theme]) .theme .i-auto, :root[data-theme="light"] .theme .i-light,
   :root[data-theme="dark"] .theme .i-dark { display: block; }
@@ -78,51 +84,75 @@
   }
   .dot.warn { background: var(--warn); }
   .dot.bad { background: var(--danger); }
+  .dot.off { background: var(--faint); }
   @keyframes pulse { 0% { transform: scale(.5); opacity: .7; } 100% { transform: scale(1.4); opacity: 0; } }
 
-  .banner {
-    display: none; margin-bottom: 16px; padding: 10px 14px; border-radius: 10px;
-    background: var(--danger-soft); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
-    font-weight: 500;
+  /* barra do administrador */
+  .adminbar {
+    display: none; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding: 10px 12px;
+    border-radius: 12px; background: var(--violet-soft); border: 1px solid color-mix(in srgb, var(--violet) 30%, transparent);
   }
-  .banner.show { display: block; }
-  .dry {
-    display: none; margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; gap: 12px; align-items: center;
-    background: var(--warn-soft); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  .adminbar.show { display: flex; }
+  .adminbar .who { font-size: 12.5px; color: var(--violet); font-weight: 700; margin-right: 4px; display: inline-flex; gap: 6px; align-items: center; }
+  .btn {
+    font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 9px; padding: 7px 12px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    display: inline-flex; align-items: center; gap: 6px;
   }
-  .dry.show { display: flex; }
-  .dry b { font-weight: 700; }
-  .dry span { color: var(--text); opacity: .85; }
+  .btn:hover:not(:disabled) { border-color: var(--faint); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+  .btn.ghost { background: none; border-color: transparent; color: var(--muted); }
+  .adminbar .btn.ghost { margin-left: auto; }
+
+  .note {
+    display: none; margin-bottom: 14px; padding: 11px 15px; border-radius: 12px; gap: 12px; align-items: center;
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .note.show { display: flex; }
+  .note svg { flex: none; }
+  .note b { font-weight: 700; }
+  .note span { color: var(--text); opacity: .85; }
+  .note.dry { background: var(--warn-soft); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+  .note.paused { background: var(--surface-2); color: var(--muted); }
+  .note.bad { background: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+  .note.job { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .note .bar { flex: 1; }
 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
-  .kpi { padding: 16px 18px; }
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 14px; }
+  .kpi { padding: 15px 16px; }
   .kpi .label { color: var(--muted); font-size: 12.5px; font-weight: 500; display: flex; align-items: center; gap: 7px; }
-  .kpi .value { font-size: 30px; font-weight: 650; letter-spacing: -.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
-  .kpi .hint { color: var(--faint); font-size: 12px; }
-  .kpi .ico { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; }
+  .kpi .value { font-size: 28px; font-weight: 650; letter-spacing: -.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .hint { color: var(--faint); font-size: 12px; line-height: 1.6; }
+  .kpi .hint i { font-style: normal; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi .ico { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex: none; }
 
-  .row { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; margin-bottom: 14px; }
-  .section-h { display: flex; align-items: baseline; gap: 10px; padding: 16px 18px 0; }
+  .row { display: grid; grid-template-columns: 1.05fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .section-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px 0; flex-wrap: wrap; }
   .section-h h2 { font-size: 14.5px; margin: 0; font-weight: 600; }
   .section-h .sub { margin-left: auto; }
 
   .row > .card { display: flex; flex-direction: column; }
   .chart { padding: 10px 18px 14px; flex: 1; display: flex; flex-direction: column; }
-  .chart svg { width: 100%; flex: 1; min-height: 150px; display: block; overflow: visible; }
+  .chart svg { width: 100%; flex: 1; min-height: 160px; display: block; overflow: visible; }
   .chart .axis { display: flex; justify-content: space-between; color: var(--faint); font-size: 11.5px; margin-top: 6px; }
-  .bar { fill: var(--accent); opacity: .85; transition: opacity .15s; }
-  .bar:hover { opacity: 1; }
+  .legend { display: flex; gap: 14px; color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .b-rem { fill: var(--accent); } .b-pro { fill: var(--violet); }
+  .bar { opacity: .88; } .bar:hover { opacity: 1; }
   .bar.zero { fill: var(--border); opacity: 1; }
 
   .folders { padding: 12px 18px 18px; display: grid; gap: 12px; }
   .folder { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--surface-2); }
-  .folder .top { display: flex; align-items: center; gap: 9px; }
+  .folder .top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
   .folder .state { font-weight: 600; font-size: 13px; }
   .folder .count { margin-left: auto; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .path {
-    font-family: var(--mono); font-size: 12.5px; margin: 10px 0; padding: 8px 10px; border-radius: 8px;
+    font-family: var(--mono); font-size: 12.5px; margin: 9px 0; padding: 7px 10px; border-radius: 8px;
     background: var(--surface); border: 1px solid var(--border); word-break: break-all;
   }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -135,26 +165,31 @@
   .chip.del { background: var(--danger-soft); border-color: transparent; color: var(--danger); font-weight: 600; }
   .chip.mov { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
   .chip.sim { background: var(--warn-soft); border-color: transparent; color: var(--warn); font-weight: 600; }
-  .folder .meta { margin-top: 10px; color: var(--muted); font-size: 12.5px; }
-  .folder .err { margin-top: 8px; color: var(--warn); font-size: 12.5px; }
+  .chip.off { text-decoration: line-through; opacity: .7; }
+  .folder .meta { margin-top: 9px; color: var(--muted); font-size: 12.5px; }
+  .folder .err { margin-top: 6px; color: var(--warn); font-size: 12.5px; word-break: break-all; }
+  .sub-block { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .sub-block .title { font-size: 12px; font-weight: 700; color: var(--violet); text-transform: uppercase; letter-spacing: .05em; display: flex; gap: 8px; align-items: center; }
 
-  .activity .tools { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-  input[type=search] {
+  .activity .tools { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input[type=search], input[type=date], input[type=text], input[type=number], input[type=password], select {
     font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 9px; padding: 6px 10px; width: 240px; outline: none;
+    border-radius: 9px; padding: 6px 10px; outline: none;
   }
-  input[type=search]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  input[type=search] { width: 240px; }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 2px; }
   .seg button {
-    font: inherit; font-size: 12.5px; border: 0; background: none; color: var(--muted); padding: 4px 10px;
+    font-size: 12.5px; border: 0; background: none; color: var(--muted); padding: 4px 10px;
     border-radius: 7px; cursor: pointer;
   }
   .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
+  .summary { font-size: 12px; color: var(--faint); padding: 8px 18px 0; min-height: 26px; }
 
   table { width: 100%; border-collapse: collapse; }
   th {
     text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint);
-    font-weight: 600; padding: 12px 18px 8px; border-bottom: 1px solid var(--border);
+    font-weight: 600; padding: 10px 18px 8px; border-bottom: 1px solid var(--border);
   }
   td { padding: 10px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
   tr:last-child td { border-bottom: 0; }
@@ -162,35 +197,63 @@
   td.when { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; width: 1%; }
   td.when small { display: block; color: var(--faint); font-size: 11.5px; }
   .file { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
-  .file mark { background: var(--accent-soft); color: var(--accent); border-radius: 3px; padding: 0 2px; }
+  .file mark.term { background: var(--accent-soft); color: var(--accent); border-radius: 3px; padding: 0 2px; }
+  mark.hit { background: color-mix(in srgb, #f2b705 35%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
   .detail { color: var(--faint); font-size: 12px; margin-top: 2px; word-break: break-all; }
   .why { color: var(--muted); font-weight: 600; }
   .why.dup { color: var(--accent); }
+  .why.pro { color: var(--violet); }
   .badge {
     display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 9px;
     border-radius: 999px; white-space: nowrap;
   }
   .badge.Deleted { background: var(--danger-soft); color: var(--danger); }
   .badge.Moved { background: var(--accent-soft); color: var(--accent); }
-  .badge.Error { background: var(--warn-soft); color: var(--warn); }
+  .badge.Error { background: var(--danger-soft); color: var(--danger); border: 1px dashed currentColor; }
   .badge.Simulated { background: var(--warn-soft); color: var(--warn); border: 1px dashed currentColor; }
-  .split { margin-top: 2px; font-size: 12px; color: var(--faint); line-height: 1.6; }
-  .split i { font-style: normal; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .empty { padding: 44px 18px; text-align: center; color: var(--muted); }
+  .badge.Warning { background: var(--warn-soft); color: var(--warn); }
+  .empty { padding: 40px 18px; text-align: center; color: var(--muted); }
   .empty svg { color: var(--faint); margin-bottom: 8px; }
 
   footer { margin-top: 18px; color: var(--faint); font-size: 12px; text-align: center; }
 
-  @media (max-width: 900px) {
-    .kpis { grid-template-columns: repeat(2, 1fr); }
-    .row { grid-template-columns: 1fr; }
+  /* janelas (chave de administrador e editor das pastas) */
+  dialog {
+    border: 1px solid var(--border); border-radius: 16px; padding: 0; background: var(--surface); color: var(--text);
+    width: min(860px, calc(100vw - 32px)); box-shadow: 0 24px 60px rgba(0,0,0,.35);
   }
-  @media (max-width: 560px) {
+  dialog.small { width: min(440px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(10,12,18,.55); }
+  .dlg-h { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .dlg-h h3 { margin: 0; font-size: 16px; }
+  .dlg-b { padding: 16px 20px; max-height: 68vh; overflow-y: auto; }
+  .dlg-f { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+  .dlg-f .msg { margin-right: auto; color: var(--danger); font-size: 12.5px; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .fields label, .field label { display: block; font-size: 11.5px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .fields input, .fields select, .field input { width: 100%; }
+  .fields .wide { grid-column: 1 / -1; }
+  .ed-folder { border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--surface-2); }
+  .ed-folder .fields input, .ed-folder .fields select { background: var(--surface); }
+  .ed-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 700; font-size: 13px; }
+  .ed-head .btn { margin-left: auto; padding: 4px 10px; font-size: 12px; }
+  .checks { display: flex; gap: 8px 16px; flex-wrap: wrap; margin-top: 10px; padding: 9px 11px; border-radius: 10px;
+            background: var(--surface); border: 1px solid var(--border); font-size: 12.5px; color: var(--muted); align-items: center; }
+  .checks b { color: var(--text); font-size: 12px; min-width: 150px; }
+  .checks label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 50; padding: 10px 16px; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: 0 12px 30px rgba(0,0,0,.25); font-size: 13px;
+  }
+
+  @media (max-width: 1050px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
     .wrap { padding: 18px 16px 36px; }
     .live { margin-left: 0; }
-    .kpi .value { font-size: 24px; }
-    .activity .section-h { flex-wrap: wrap; }
-    .activity .tools { margin-left: 0; width: 100%; flex-wrap: wrap; }
+    .kpi .value { font-size: 23px; }
+    .activity .tools { margin-left: 0; width: 100%; }
     input[type=search] { width: 100%; }
     td, th { padding-left: 12px; padding-right: 12px; }
   }
@@ -212,45 +275,70 @@
       <div class="sub" id="machine">Conectando…</div>
     </div>
     <div class="live"><span class="dot" id="liveDot"></span><span id="liveText">Conectando…</span></div>
-    <button class="theme" id="theme" type="button">
-      <svg class="i-auto" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>
+    <button class="round" id="adminBtn" type="button" title="Entrar como administrador">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </button>
+    <button class="round theme" id="theme" type="button">
+      <svg class="i-auto" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>
       <svg class="i-light" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       <svg class="i-dark" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
     </button>
   </header>
 
-  <div class="dry" id="dry">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5"/></svg>
-    <div><b>Modo simulação ligado.</b> <span>Nada está sendo apagado nem movido: os arquivos marcados como “Simulado” é que seriam.
-      Para valer de verdade, troque <code>DryRun</code> para <code>false</code> e reinicie.</span></div>
+  <div class="adminbar" id="adminbar">
+    <span class="who"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Administrador</span>
+    <button class="btn" id="aPause" type="button"></button>
+    <button class="btn" id="aDry" type="button"></button>
+    <button class="btn" id="aScan" type="button">Varrer agora</button>
+    <button class="btn" id="aMoveAll" type="button" title="Todas as pastas e subpastas da pasta de processados, não só a do dia">Mover tudo do Processado</button>
+    <button class="btn" id="aEdit" type="button">Editar pastas</button>
+    <button class="btn ghost" id="aLogout" type="button">Sair</button>
   </div>
 
-  <div class="banner" id="banner">Sem resposta do serviço. Tentando de novo…</div>
+  <div class="note bad" id="banner"><b id="bannerText">Sem resposta do serviço. Tentando de novo…</b></div>
+  <div class="note paused" id="pausedNote">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>
+    <div><b>Pausado.</b> <span id="pausedText">Nenhuma pasta está sendo vigiada.</span></div>
+  </div>
+  <div class="note dry" id="dryNote">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5"/></svg>
+    <div><b>Modo simulação.</b> <span>Nada é apagado nem movido: os arquivos marcados como “Simulado” é que seriam.</span></div>
+  </div>
+  <div class="note job" id="jobNote">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V20H3V8M1 3h22v5H1zM10 12h4"/></svg>
+    <div class="bar" id="jobText"></div>
+  </div>
 
   <section class="kpis">
     <div class="card kpi">
       <div class="label"><span class="ico" style="background:var(--ok-soft);color:var(--ok)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>Verificados hoje</div>
       <div class="value" id="kChecked">–</div>
-      <div class="split" id="kKept">&nbsp;</div>
+      <div class="hint" id="kKept">&nbsp;</div>
     </div>
     <div class="card kpi">
       <div class="label"><span class="ico" style="background:var(--danger-soft);color:var(--danger)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M6.5 7l.9 12h9.2l.9-12"/></svg></span><span id="lToday">Removidos hoje</span></div>
-      <div class="value" id="kToday">–</div>
-      <div class="hint" id="kTodayHint">&nbsp;</div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M6.5 7l.9 12h9.2l.9-12"/></svg></span><span id="lRemoved">Removidos hoje</span></div>
+      <div class="value" id="kRemoved">–</div>
+      <div class="hint" id="kRemovedHint">&nbsp;</div>
+    </div>
+    <div class="card kpi">
+      <div class="label"><span class="ico" style="background:var(--violet-soft);color:var(--violet)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v10H3z"/><path d="M12 13h5M15 11l2 2-2 2"/></svg></span>Do Processado hoje</div>
+      <div class="value" id="kProcessed">–</div>
+      <div class="hint" id="kProcessedHint">&nbsp;</div>
     </div>
     <div class="card kpi">
       <div class="label"><span class="ico" style="background:var(--accent-soft);color:var(--accent)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg></span>Total removido</div>
-      <div class="value" id="kTotal">–</div>
-      <div class="hint" id="kStarted">&nbsp;</div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></span>NF repetida hoje</div>
+      <div class="value" id="kDup">–</div>
+      <div class="hint" id="kDupHint">&nbsp;</div>
     </div>
     <div class="card kpi">
       <div class="label"><span class="ico" style="background:var(--warn-soft);color:var(--warn)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg></span>Falhas</div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg></span>Falhas hoje</div>
       <div class="value" id="kErrors">–</div>
-      <div class="hint">em uso ou sem permissão</div>
+      <div class="hint" id="kErrorsHint">em uso ou sem permissão</div>
     </div>
   </section>
 
@@ -258,13 +346,14 @@
     <div class="card">
       <div class="section-h"><h2>Atividade</h2><span class="sub" id="chartPeak" style="margin-left:0"></span>
         <div class="seg" id="range" style="margin-left:auto">
-          <button data-r="min" class="on">60 min</button>
-          <button data-r="day">30 dias</button>
+          <button data-r="min" class="on" type="button">60 min</button>
+          <button data-r="day" type="button">30 dias</button>
         </div>
       </div>
       <div class="chart">
-        <svg id="chart" viewBox="0 0 600 150" preserveAspectRatio="none"></svg>
+        <svg id="chart" viewBox="0 0 600 160" preserveAspectRatio="none"></svg>
         <div class="axis" id="axis"></div>
+        <div class="legend" id="legend" hidden><span><i style="background:var(--accent)"></i>removidos</span><span><i style="background:var(--violet)"></i>do Processado</span></div>
       </div>
     </div>
     <div class="card">
@@ -276,38 +365,77 @@
   <section class="card activity">
     <div class="section-h">
       <h2>Arquivos tratados</h2>
+      <div class="seg" id="source">
+        <button data-s="recent" class="on" type="button">Recentes</button>
+        <button data-s="day" type="button">Histórico do dia</button>
+      </div>
+      <input type="date" id="day" hidden>
       <div class="tools">
-        <div class="seg" id="filter">
-          <button data-k="" class="on">Todos</button>
-          <button data-k="Deleted">Apagados</button>
-          <button data-k="Moved">Movidos</button>
-          <button data-k="Simulated">Simulados</button>
-          <button data-k="Error">Falhas</button>
-        </div>
-        <input type="search" id="q" placeholder="Buscar arquivo…">
+        <select id="kind" aria-label="Ação">
+          <option value="">Todas as ações</option>
+          <option value="Deleted">Apagados</option>
+          <option value="Moved">Movidos</option>
+          <option value="Simulated">Simulados</option>
+          <option value="Warning">Avisos</option>
+          <option value="Error">Falhas</option>
+        </select>
+        <input type="search" id="q" placeholder="Buscar arquivo, NF, motivo ou pasta…">
       </div>
     </div>
+    <div class="summary" id="summary"></div>
     <table>
       <thead><tr><th>Quando</th><th>Ação</th><th>Arquivo</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
     <div class="empty" id="empty" hidden>
       <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
-      <div id="emptyText">Nada por aqui ainda. Os arquivos aparecem assim que forem tratados.</div>
+      <div id="emptyText"></div>
     </div>
   </section>
 
   <footer>Atualiza sozinho a cada 2 segundos · <span id="dataDir"></span></footer>
 </div>
 
+<dialog class="small" id="keyDlg">
+  <form method="dialog" id="keyForm">
+    <div class="dlg-h"><h3>Entrar como administrador</h3></div>
+    <div class="dlg-b">
+      <p class="sub" style="margin-top:0">Pausar, mudar a simulação, varrer, mover o Processado e editar as pastas pedem a chave de
+        administrador. Ela fica no servidor, em <code>data\admin-key.txt</code> (ou em <code>Dashboard:AdminKey</code>).</p>
+      <div class="field"><label for="keyInput">Chave</label><input type="password" id="keyInput" autocomplete="current-password" required></div>
+    </div>
+    <div class="dlg-f"><span class="msg" id="keyMsg"></span>
+      <button class="btn" value="cancel" formnovalidate type="submit">Cancelar</button>
+      <button class="btn pri" id="keyOk" value="ok" type="submit">Entrar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="editDlg">
+  <div class="dlg-h"><h3>Pastas e regras</h3><span class="sub" style="margin-left:auto">grava em appsettings.local.json e aplica na hora</span></div>
+  <div class="dlg-b">
+    <div class="fields" style="margin-bottom:14px">
+      <div><label for="eRescan">Varredura de segurança a cada (minutos)</label><input type="number" id="eRescan" min="1" max="1440"></div>
+      <div><label for="eCache">Lembrar NFs por (dias)</label><input type="number" id="eCache" min="1" max="365"></div>
+    </div>
+    <div id="eFolders"></div>
+    <button class="btn" id="eAdd" type="button">+ Pasta</button>
+  </div>
+  <div class="dlg-f"><span class="msg" id="eMsg"></span>
+    <button class="btn" id="eCancel" type="button">Cancelar</button>
+    <button class="btn pri" id="eSave" type="button">Salvar pastas</button>
+  </div>
+</dialog>
+
 <script>
 const $ = id => document.getElementById(id);
 const nf = new Intl.NumberFormat('pt-BR');
 const tf = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-const df = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-let data = null, kind = '', query = '';
+const BS = String.fromCharCode(92);
+let data = null, kind = '', query = '', range = 'min', source = 'recent', dayLines = [], dayLoaded = '';
 
+// ------------------------------------------------------------------------------------------- utilidades
 function ago(iso) {
   if (!iso) return 'nunca';
   const s = Math.max(0, Math.round((Date.now() - new Date(iso)) / 1000));
@@ -319,183 +447,75 @@ function ago(iso) {
   if (h < 24) return `há ${h}h ${m % 60}min`;
   return `há ${Math.floor(h / 24)}d ${h % 24}h`;
 }
-function span(iso) { return ago(iso).replace(/^há /, ''); }
+const span = iso => ago(iso).replace(/^há /, '');
 function until(iso) {
   const s = Math.max(0, Math.round((new Date(iso) - Date.now()) / 1000));
   return s < 60 ? `${s}s` : `${Math.ceil(s / 60)} min`;
 }
-
-const STATE = {
-  Watching: { label: 'Vigiando', dot: 'ok' },
-  Connecting: { label: 'Conectando', dot: '' },
-  Reconnecting: { label: 'Sem acesso, reconectando', dot: 'warn' },
-};
-
-function renderHeader(d) {
-  $('machine').textContent = `${d.machine} · ativo há ${span(d.started)}`;
-  const bad = d.folders.filter(f => f.state !== 'Watching').length;
-  $('liveDot').className = 'dot ' + (bad ? 'warn' : 'ok');
-  $('liveText').innerHTML = bad
-    ? `<b>${bad} pasta${bad > 1 ? 's' : ''}</b> sem acesso`
-    : `<b>Ativo</b> · tempo real`;
+function toast(t) {
+  const e = document.createElement('div'); e.className = 'toast'; e.textContent = t;
+  document.body.appendChild(e); setTimeout(() => e.remove(), 3500);
 }
+const fold = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-function renderKpis(d) {
-  $('dry').classList.toggle('show', d.dryRun);
-  $('kChecked').textContent = nf.format(d.checkedToday);
-  const kept = d.keptShortToday + d.keptNoTextToday;
-  // Contagem de verificados começou depois do primeiro uso (versão antiga): diz desde quando.
-  const since = new Date(d.checkedSince), late = since - new Date(d.firstStart) > 60000;
-  const sinceTxt = late && since.toDateString() === new Date().toDateString()
-    ? ` · <span title="A versão anterior não contava verificações">contando desde ${tf.format(since).slice(0, 5)}</span>` : '';
-  $('kKept').innerHTML = `<div><i>${nf.format(kept)}</i> não apagados${sinceTxt}</div>` +
-    `<div><i>${nf.format(d.keptShortToday)}</i> nome curto · <i>${nf.format(d.keptNoTextToday)}</i> sem o texto</div>`;
-  $('kChecked').title = `${nf.format(d.checked)} verificações desde ${new Date(d.firstStart).toLocaleDateString('pt-BR')} (cada vez que um arquivo é olhado: evento ou varredura)`;
-  $('lToday').textContent = d.dryRun ? 'Seriam removidos hoje' : 'Removidos hoje';
-  $('kToday').textContent = nf.format(d.dryRun ? d.simulatedToday : d.today);
-  $('kTotal').textContent = nf.format(d.total);
-  $('kErrors').textContent = nf.format(d.errors);
-  const last60 = d.perMinute.reduce((a, b) => a + b, 0);
-  $('kTodayHint').textContent = `${nf.format(last60)} na última hora` +
-    (d.duplicatesToday ? ` · ${nf.format(d.duplicatesToday)} por NF repetida` : '') +
-    (d.pending ? ` · ${nf.format(d.pending)} na fila` : '');
-  $('kStarted').textContent = `desde ${new Date(d.firstStart).toLocaleDateString('pt-BR')}` +
-    (d.simulated ? ` · ${nf.format(d.simulated)} simulados` : '');
-  $('dataDir').textContent = `contagem e histórico (CSV por dia) salvos em ${d.dataDir}`;
-}
-
-let range = 'min';
-function renderChart(d) {
-  const byDay = range === 'day';
-  const v = byDay ? d.daily.map(x => x.count + x.simulated) : d.perMinute;
-  const label = i => {
-    if (byDay) {
-      const [y, m, dd] = d.daily[i].day.split('-');
-      return i === v.length - 1 ? 'hoje' : `${dd}/${m}`;
-    }
-    const ago = v.length - 1 - i;
-    return ago ? `há ${ago} min` : 'neste minuto';
-  };
-  $('axis').innerHTML = byDay
-    ? `<span>${label(0)}</span><span>${label(15)}</span><span>hoje</span>`
-    : '<span>há 60 min</span><span>há 30 min</span><span>agora</span>';
-  const max = Math.max(1, ...v), W = 600, H = 150, gap = byDay ? 4 : 2, bw = W / v.length - gap;
-  let out = '';
-  for (let i = 0; i < 4; i++) {
-    const y = Math.round(H * i / 4) + .5;
-    out += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-dasharray="2 4" vector-effect="non-scaling-stroke"/>`;
-  }
-  v.forEach((n, i) => {
-    const h = n ? Math.max(4, (n / max) * (H - 8)) : 3;
-    out += `<rect class="bar${n ? '' : ' zero'}" x="${i * (bw + gap)}" y="${H - h}" width="${bw}" height="${h}" rx="2">` +
-      `<title>${nf.format(n)} arquivo${n === 1 ? '' : 's'} · ${label(i)}</title></rect>`;
+// ------------------------------------------------------------------------------------------- administrador
+let adminKey = '';
+try { adminKey = sessionStorage.getItem('lnj-admin') || ''; } catch {}
+async function api(path, body) {
+  const r = await fetch(path, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
-  $('chartPeak').textContent = `pico ${nf.format(max)}/${byDay ? 'dia' : 'min'}`;
-  $('chart').innerHTML = out;
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 403) { setAdmin(''); throw new Error(j.error || 'chave inválida'); }
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
 }
-
-function rules(f) {
-  const c = [];
-  if (f.dryRun) c.push(`<span class="chip sim">Simulação</span>`);
-  c.push(f.action === 'Move'
-    ? `<span class="chip mov">Move para ${esc(f.moveTo)}</span>`
-    : `<span class="chip del">Apaga</span>`);
-  c.push(`<span class="chip">nome com <b>${f.maxNameLength + 1} ou mais</b> caracteres${f.countExtension ? '' : ' (sem extensão)'}</span>`);
-  if (f.nameContains.length)
-    c.push(`<span class="chip">e contém ${f.nameContains.map(s => `<code>${esc(s)}</code>`).join(' ou ')}</span>`);
-  if (f.deleteDuplicateNf) c.push(`<span class="chip">e <b>NF repetida</b> (mesmo número já visto)</span>`);
-  if (f.includeSubdirectories) c.push(`<span class="chip">inclui subpastas</span>`);
-  return c.join('');
-}
-
-function renderFolders(d) {
-  $('folderCount').textContent = `${d.folders.length} pasta${d.folders.length === 1 ? '' : 's'}`;
-  $('folders').innerHTML = d.folders.map(f => {
-    const st = STATE[f.state] ?? STATE.Connecting;
-    const meta = f.state === 'Watching'
-      ? `Vigiando há ${span(f.since)} · última varredura ${ago(f.lastScan)}` +
-        (f.deleteDuplicateNf ? ` · ${nf.format(data.nfCache)} NFs no cache (${data.nfCacheDays} dias)` : '')
-      : f.state === 'Reconnecting' && f.retryAt
-        ? `Sem acesso há ${span(f.since)} · nova tentativa em ${until(f.retryAt)}`
-        : 'Abrindo a pasta…';
-    const err = f.state === 'Reconnecting' && f.lastError ? `<div class="err">${esc(f.lastError)}</div>` : '';
-    return `<div class="folder">
-      <div class="top"><span class="dot ${st.dot}"></span><span class="state">${st.label}</span>
-        <span class="count">${nf.format(f.checked)} verificações · ${nf.format(f.done)} removido${f.done === 1 ? '' : 's'}</span></div>
-      <div class="path">${esc(f.path)}</div>
-      <div class="chips">${rules(f)}</div>
-      <div class="meta">${meta}</div>${err}
-    </div>`;
-  }).join('');
-}
-
-function highlight(name, terms) {
-  let html = esc(name);
-  for (const t of terms) {
-    if (!t) continue;
-    const re = new RegExp(esc(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    html = html.replace(re, m => `<mark>${m}</mark>`);
-  }
-  return html;
-}
-
-const KIND = { Deleted: 'Apagado', Moved: 'Movido', Error: 'Falha', Simulated: 'Simulado' };
-
-function renderRows(d) {
-  const terms = [...new Set(d.folders.flatMap(f => f.nameContains))];
-  const q = query.toLowerCase();
-  const list = d.recent.filter(a => (!kind || a.kind === kind) && (!q || a.name.toLowerCase().includes(q)));
-  $('rows').innerHTML = list.map(a => {
-    const at = new Date(a.at);
-    const why = a.reason ? `<span class="why${a.reason.startsWith('NF ') ? ' dup' : ''}">${esc(a.reason)}</span> · ` : '';
-    const detail = a.kind === 'Moved' ? `${why}→ ${esc(a.detail)}`
-      : a.kind === 'Error' ? esc(a.detail)
-      : a.kind === 'Simulated' ? `${why}${esc(a.detail)} · ${esc(a.folder)}`
-      : `${why}${esc(a.folder)}`;
-    return `<tr>
-      <td class="when">${tf.format(at)}<small>${ago(a.at)}</small></td>
-      <td><span class="badge ${a.kind}">${KIND[a.kind] ?? a.kind}</span></td>
-      <td><div class="file">${highlight(a.name, terms)}</div><div class="detail">${detail}</div></td>
-    </tr>`;
-  }).join('');
-  const empty = list.length === 0;
-  $('empty').hidden = !empty;
-  $('emptyText').textContent = d.recent.length
-    ? 'Nenhum arquivo com esse filtro.'
-    : 'Nada por aqui ainda. Os arquivos aparecem assim que forem tratados.';
-}
-
-function render() {
-  if (!data) return;
-  renderHeader(data); renderKpis(data); renderChart(data); renderFolders(data); renderRows(data);
-}
-
-async function tick() {
-  try {
-    const r = await fetch('api/status', { cache: 'no-store' });
-    if (!r.ok) {
-      const body = await r.json().catch(() => null);
-      throw new Error(`Erro no serviço (HTTP ${r.status})${body?.error ? ': ' + body.error : ''}`);
-    }
-    data = await r.json();
-    $('banner').classList.remove('show');
-    render();
-  } catch (e) {
-    $('banner').textContent = e?.message?.startsWith('Erro no serviço')
-      ? e.message
-      : 'Sem resposta do serviço. Tentando de novo…';
-    $('banner').classList.add('show');
-    $('liveDot').className = 'dot bad';
-    $('liveText').innerHTML = '<b>Sem conexão</b>';
-  }
-}
-
-$('filter').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  kind = b.dataset.k;
-  for (const x of $('filter').children) x.classList.toggle('on', x === b);
+function setAdmin(k) {
+  adminKey = k;
+  try { k ? sessionStorage.setItem('lnj-admin', k) : sessionStorage.removeItem('lnj-admin'); } catch {}
+  $('adminbar').classList.toggle('show', !!k);
+  $('adminBtn').classList.toggle('on', !!k);
+  $('adminBtn').title = k ? 'Administrador (clique para sair)' : 'Entrar como administrador';
   render();
+}
+$('adminBtn').addEventListener('click', () => {
+  if (adminKey) { setAdmin(''); return; }
+  $('keyMsg').textContent = ''; $('keyInput').value = ''; $('keyDlg').showModal();
 });
+$('keyForm').addEventListener('submit', async e => {
+  if (e.submitter?.value !== 'ok') return;
+  e.preventDefault();
+  const k = $('keyInput').value.trim();
+  adminKey = k;
+  try { await api('/api/admin/check', {}); setAdmin(k); $('keyDlg').close(); toast('Administrador: controles liberados.'); }
+  catch (err) { $('keyMsg').textContent = err.message; }
+});
+$('aLogout').addEventListener('click', () => setAdmin(''));
+async function act(fn, ok) {
+  try { await fn(); if (ok) toast(ok); setTimeout(tick, 400); }
+  catch (e) { toast('Não deu: ' + e.message); }
+}
+$('aPause').addEventListener('click', () => {
+  const pause = !data.paused;
+  act(() => api('/api/admin/pause', { paused: pause }), pause ? 'Pausado.' : 'Retomado: vigiando de novo.');
+});
+$('aDry').addEventListener('click', () => {
+  const on = !data.globalDryRun;
+  if (!on && !confirm('Sair da simulação? A partir daqui os arquivos que casarem com as regras são APAGADOS ou movidos de verdade.\n\nConferiu os “Simulado”?')) return;
+  act(() => api('/api/admin/dryrun', { dryRun: on }), on ? 'Simulação ligada para todas as pastas.' : 'Simulação desligada: agindo de verdade.');
+});
+$('aScan').addEventListener('click', () => act(() => api('/api/admin/scan', {}), 'Varredura pedida.'));
+$('aMoveAll').addEventListener('click', () => {
+  const sim = data.dryRun;
+  const msg = sim
+    ? 'Simular “Mover tudo do Processado”? Percorre TODAS as pastas e subpastas do Processado e registra o que seria movido (nada sai do lugar).'
+    : 'Mover tudo do Processado? Em TODAS as pastas e subpastas, cada arquivo com o texto vai para a pasta LongNameJanitor, substituindo o que já estiver lá. Pode demorar.';
+  if (confirm(msg)) act(() => api('/api/admin/move-all', {}), 'Começou: o andamento aparece no topo.');
+});
+
+// ------------------------------------------------------------------------------------------- tema
 const THEMES = [[null, 'Tema: automático (segue o sistema)'], ['light', 'Tema: claro'], ['dark', 'Tema: escuro']];
 function setTheme(t) {
   const root = document.documentElement;
@@ -509,16 +529,334 @@ $('theme').addEventListener('click', () => {
 });
 setTheme(document.documentElement.dataset.theme ?? null);
 
+// ------------------------------------------------------------------------------------------- desenho
+const STATE = {
+  Watching: { label: 'Vigiando', dot: 'ok' },
+  Connecting: { label: 'Conectando', dot: '' },
+  Reconnecting: { label: 'Sem acesso, reconectando', dot: 'warn' },
+  Paused: { label: 'Pausado', dot: 'off' },
+  Off: { label: 'Desligado nesta pasta', dot: 'off' },
+  Invalid: { label: 'Configuração inválida', dot: 'bad' },
+};
+
+function renderHeader(d) {
+  $('machine').textContent = `${d.machine} · ativo há ${span(d.started)}`;
+  const bad = d.folders.filter(f => ['Reconnecting', 'Invalid'].includes(f.state) || ['Reconnecting', 'Invalid'].includes(f.processedState)).length;
+  $('liveDot').className = 'dot ' + (d.paused ? 'off' : bad ? 'warn' : 'ok');
+  $('liveText').innerHTML = d.paused ? '<b>Pausado</b>'
+    : bad ? `<b>${bad} pasta${bad > 1 ? 's' : ''}</b> com problema`
+    : '<b>Ativo</b> · tempo real';
+  $('pausedNote').classList.toggle('show', d.paused);
+  $('dryNote').classList.toggle('show', d.dryRun && !d.paused);
+  $('dryNote').querySelector('span').textContent = d.globalDryRun
+    ? 'Nada é apagado nem movido: os arquivos marcados como “Simulado” é que seriam.'
+    : 'Em pelo menos uma pasta nada é apagado nem movido: os “Simulado” é que seriam.';
+
+  const j = d.moveAll || {};
+  const jobText = j.running
+    ? `<b>Movendo tudo do Processado${j.dryRun ? ' (simulação)' : ''}…</b> ${nf.format(j.folders)} pasta(s), ${nf.format(j.checked)} arquivo(s) verificados, `
+      + (j.dryRun ? `${nf.format(j.simulated)} seriam movidos` : `${nf.format(j.moved)} movidos`) + (j.errors ? `, ${nf.format(j.errors)} erro(s)` : '')
+      + ` · começou ${ago(j.start)} (${esc(j.by)})`
+    : j.end && Date.now() - new Date(j.end) < 6 * 3600e3
+      ? `<b>Último “Mover tudo do Processado”${j.dryRun ? ' (simulação)' : ''}:</b> ${ago(j.end)} · ${nf.format(j.folders)} pasta(s), ${nf.format(j.checked)} verificados, `
+        + (j.dryRun ? `${nf.format(j.simulated)} seriam movidos` : `${nf.format(j.moved)} movidos`) + (j.errors ? `, ${nf.format(j.errors)} erro(s)` : '')
+        + (j.error ? ` · parou: ${esc(j.error)}` : '')
+      : '';
+  $('jobText').innerHTML = jobText;
+  $('jobNote').classList.toggle('show', !!jobText);
+
+  $('aPause').textContent = d.paused ? 'Retomar' : 'Pausar';
+  $('aPause').className = 'btn' + (d.paused ? ' pri' : '');
+  $('aDry').textContent = d.globalDryRun ? 'Sair da simulação' : 'Ligar simulação';
+  $('aDry').className = 'btn' + (d.globalDryRun ? ' danger' : '');
+  $('aScan').disabled = d.paused;
+  $('aMoveAll').disabled = !!j.running || !d.folders.some(f => f.processedPath);
+}
+
+function renderKpis(d) {
+  $('kChecked').textContent = nf.format(d.checkedToday);
+  const kept = d.keptShortToday + d.keptNoTextToday + d.warningsToday;
+  const since = new Date(d.checkedSince), late = since - new Date(d.firstStart) > 60000 && since.toDateString() === new Date().toDateString();
+  $('kKept').innerHTML = `<div><i>${nf.format(kept)}</i> ficaram${late ? ` · contando desde ${tf.format(since).slice(0, 5)}` : ''}</div>`
+    + `<div><i>${nf.format(d.keptShortToday)}</i> curtos · <i>${nf.format(d.keptNoTextToday)}</i> sem o texto · <i>${nf.format(d.warningsToday)}</i> NF repetida</div>`;
+
+  $('lRemoved').textContent = d.dryRun ? 'Seriam removidos hoje' : 'Removidos hoje';
+  $('kRemoved').textContent = nf.format(d.dryRun ? d.simulatedToday : d.today);
+  $('kRemovedHint').innerHTML = `<div><i>${nf.format(d.total)}</i> no total desde ${new Date(d.firstStart).toLocaleDateString('pt-BR')}</div>`
+    + `<div>${nf.format(d.perMinute.reduce((a, b) => a + b, 0))} na última hora`
+    + (d.duplicatesToday ? ` · ${nf.format(d.duplicatesToday)} por NF repetida` : '')
+    + (d.pending ? ` · ${nf.format(d.pending)} na fila` : '') + '</div>';
+
+  const withProcessed = d.folders.some(f => f.processedPath);
+  $('kProcessed').textContent = withProcessed ? nf.format(d.processedToday) : '–';
+  $('kProcessedHint').innerHTML = withProcessed
+    ? `<div><i>${nf.format(d.processed)}</i> no total</div><div>movidos para a pasta LongNameJanitor</div>`
+    : 'nenhuma pasta de processados';
+
+  const dupMode = [...new Set(d.folders.map(f => f.duplicateNf))];
+  $('kDup').textContent = nf.format(d.warningsToday + d.duplicatesToday);
+  $('kDupHint').innerHTML = `<div><i>${nf.format(d.warningsToday)}</i> só aviso (ficaram) · <i>${nf.format(d.duplicatesToday)}</i> removidas</div>`
+    + `<div>${nf.format(d.nfCache)} NFs no cache (${d.nfCacheDays} dias)</div>`;
+  if (dupMode.length === 1 && dupMode[0] === 'Off') $('kDupHint').innerHTML = 'desligado em todas as pastas';
+
+  $('kErrors').textContent = nf.format(d.errorsToday);
+  $('kErrorsHint').innerHTML = `<div>em uso ou sem permissão</div><div><i>${nf.format(d.errors)}</i> no total</div>`;
+  $('dataDir').textContent = `contagem, cache de NF e histórico (CSV por dia) em ${d.dataDir}`;
+}
+
+function renderChart(d) {
+  const byDay = range === 'day';
+  const rem = byDay ? d.daily.map(x => (d.dryRun ? x.simulated : x.count)) : d.perMinute;
+  const pro = byDay ? d.daily.map(x => x.processed) : d.perMinute.map(() => 0);
+  const label = i => {
+    if (byDay) { const [, m, dd] = d.daily[i].day.split('-'); return i === rem.length - 1 ? 'hoje' : `${dd}/${m}`; }
+    const a = rem.length - 1 - i; return a ? `há ${a} min` : 'neste minuto';
+  };
+  $('axis').innerHTML = byDay
+    ? `<span>${label(0)}</span><span>${label(15)}</span><span>hoje</span>`
+    : '<span>há 60 min</span><span>há 30 min</span><span>agora</span>';
+  $('legend').hidden = !byDay || !d.folders.some(f => f.processedPath);
+  const tot = rem.map((v, i) => v + pro[i]);
+  const max = Math.max(1, ...tot), W = 600, H = 160, gap = byDay ? 4 : 2, bw = W / rem.length - gap;
+  let out = '';
+  for (let i = 0; i < 4; i++) {
+    const y = Math.round(H * i / 4) + .5;
+    out += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-dasharray="2 4" vector-effect="non-scaling-stroke"/>`;
+  }
+  tot.forEach((n, i) => {
+    const x = i * (bw + gap);
+    const title = `<title>${label(i)}: ${nf.format(rem[i])} ${d.dryRun ? 'simulados' : 'removidos'}${byDay && pro[i] ? ` + ${nf.format(pro[i])} do Processado` : ''}</title>`;
+    if (!n) { out += `<rect class="bar zero" x="${x}" y="${H - 3}" width="${bw}" height="3" rx="2">${title}</rect>`; return; }
+    const hp = pro[i] / max * (H - 8), hr = rem[i] / max * (H - 8);
+    if (hr) out += `<rect class="bar b-rem" x="${x}" y="${H - hr - hp}" width="${bw}" height="${Math.max(2, hr)}" rx="2">${title}</rect>`;
+    if (hp) out += `<rect class="bar b-pro" x="${x}" y="${H - hp}" width="${bw}" height="${Math.max(2, hp)}" rx="2">${title}</rect>`;
+  });
+  $('chart').innerHTML = out;
+  $('chartPeak').textContent = `pico ${nf.format(max)}/${byDay ? 'dia' : 'min'}`;
+}
+
+function stateLine(st, since, lastScan, retryAt, err, okText) {
+  if (st === 'Watching') return okText;
+  if (st === 'Reconnecting') return `Sem acesso há ${span(since)}` + (retryAt ? ` · nova tentativa em ${until(retryAt)}` : '');
+  if (st === 'Paused') return 'Pausado pelo administrador';
+  if (st === 'Off') return 'Desligado nas opções desta pasta';
+  if (st === 'Invalid') return 'Corrija a configuração desta pasta';
+  return 'Abrindo a pasta…';
+}
+
+function renderFolders(d) {
+  $('folderCount').textContent = `${d.folders.length} pasta${d.folders.length === 1 ? '' : 's'}`;
+  if (!d.folders.length) {
+    $('folders').innerHTML = '<div class="empty">Nenhuma pasta configurada.<br>Use “Editar pastas” (administrador) ou o <code>appsettings.local.json</code>.</div>';
+    return;
+  }
+  $('folders').innerHTML = d.folders.map(f => {
+    const st = STATE[f.state] ?? STATE.Connecting;
+    const chips = [];
+    if (f.dryRun) chips.push('<span class="chip sim">Simulação nesta pasta</span>');
+    chips.push(f.action === 'Move' ? `<span class="chip mov${f.longNameRule ? '' : ' off'}">Move para ${esc(f.moveTo)}</span>` : `<span class="chip del${f.longNameRule ? '' : ' off'}">Apaga</span>`);
+    chips.push(`<span class="chip${f.longNameRule ? '' : ' off'}">nome com <b>${f.maxNameLength + 1} ou mais</b> caracteres${f.countExtension ? '' : ' (sem extensão)'}</span>`);
+    chips.push(`<span class="chip">só com ${f.nameContains.map(s => `<code>${esc(s)}</code>`).join(' ou ')}</span>`);
+    chips.push(f.duplicateNf === 'Off' ? '<span class="chip off">NF repetida</span>'
+      : `<span class="chip"><b>NF repetida</b>: ${f.duplicateNf === 'Warn' ? 'só avisa' : f.action === 'Move' ? 'move' : 'apaga'}</span>`);
+    if (f.includeSubdirectories) chips.push('<span class="chip">inclui subpastas</span>');
+
+    const okText = `Vigiando há ${span(f.since)} · última varredura ${ago(f.lastScan)}`;
+    let html = `<div class="folder">
+      <div class="top"><span class="dot ${st.dot}"></span><span class="state">${st.label}</span>
+        <span class="count">${nf.format(f.checked)} verificações · ${nf.format(f.done)} removidos</span></div>
+      <div class="path">${esc(f.path)}</div>
+      <div class="chips">${chips.join('')}</div>
+      <div class="meta">${stateLine(f.state, f.since, f.lastScan, f.retryAt, f.lastError, okText)}</div>
+      ${f.lastError && f.state !== 'Watching' ? `<div class="err">${esc(f.lastError)}</div>` : ''}`;
+
+    if (f.processedPath) {
+      const ps = STATE[f.processedState] ?? STATE.Connecting;
+      html += `<div class="sub-block">
+        <div class="title"><span class="dot ${ps.dot}"></span>Pasta de processados · ${ps.label.toLowerCase()}</div>
+        <div class="path">${esc(f.processedToday)}</div>
+        <div class="chips"><span class="chip mov">Move para ${esc(f.processedTarget)}</span><span class="chip">substitui se já existir</span></div>
+        <div class="meta">${stateLine(f.processedState, null, f.processedLastScan, f.processedRetryAt, f.processedError,
+          `Pasta do dia${f.processedYesterday ? ' e a de ontem' : ''} · última varredura ${ago(f.processedLastScan)}`)}</div>
+        ${f.processedError && f.processedState !== 'Watching' ? `<div class="err">${esc(f.processedError)}</div>` : ''}
+      </div>`;
+    }
+    return html + '</div>';
+  }).join('');
+}
+
+// destaca os textos obrigatórios (CNPJ) e o que foi buscado
+function highlight(text, terms) {
+  const raw = String(text ?? '');
+  const marks = new Array(raw.length).fill(0), low = raw.toLowerCase();
+  const put = (t, v) => { if (!t) return; let i = low.indexOf(t.toLowerCase()); while (i !== -1) { for (let k = i; k < i + t.length; k++) marks[k] = Math.max(marks[k], v); i = low.indexOf(t.toLowerCase(), i + 1); } };
+  terms.forEach(t => put(t, 1));
+  query.split(/\s+/).filter(w => w.length > 1).forEach(w => put(w, 2));
+  let html = '', open = 0;
+  for (let k = 0; k < raw.length; k++) {
+    if (marks[k] !== open) { if (open) html += '</mark>'; if (marks[k]) html += `<mark class="${marks[k] === 2 ? 'hit' : 'term'}">`; open = marks[k]; }
+    html += esc(raw[k]);
+  }
+  return html + (open ? '</mark>' : '');
+}
+
+const KIND = { Deleted: 'Apagado', Moved: 'Movido', Error: 'Falha', Simulated: 'Simulado', Warning: 'Aviso' };
+const KIND_FROM_CSV = { Apagado: 'Deleted', Movido: 'Moved', Falha: 'Error', Simulado: 'Simulated', Aviso: 'Warning' };
+
+function currentRows(d) {
+  if (source === 'day') return dayLines;
+  return d.recent.map(a => ({ at: a.at, kind: a.kind, name: a.name, folder: a.folder, reason: a.reason || '', detail: a.detail || '' }));
+}
+function passes(r) {
+  if (kind && r.kind !== kind) return false;
+  if (!query) return true;
+  const hay = fold([r.name, r.reason, r.detail, r.folder, KIND[r.kind]].join(' '));
+  return fold(query).split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
+
+function renderRows(d) {
+  const terms = [...new Set(d.folders.flatMap(f => f.nameContains))];
+  const all = currentRows(d), list = all.filter(passes);
+  const filtering = !!(kind || query);
+  $('summary').textContent = source === 'day'
+    ? `${nf.format(all.length)} registro(s) em ${$('day').value.split('-').reverse().join('/')}` + (filtering ? ` · ${nf.format(list.length)} com o filtro` : '')
+    : filtering ? `${nf.format(list.length)} de ${nf.format(all.length)} recentes` : `últimos ${nf.format(all.length)} registros`;
+
+  $('rows').innerHTML = list.slice(0, 500).map(a => {
+    const at = new Date(a.at.replace(' ', 'T'));
+    const cls = a.reason.startsWith('NF ') ? ' dup' : a.reason.includes('rocessado') ? ' pro' : '';
+    const why = a.reason ? `<span class="why${cls}">${highlight(a.reason, [])}</span> · ` : '';
+    const detail = a.kind === 'Moved' ? `${why}→ ${highlight(a.detail, [])}`
+      : a.kind === 'Error' ? `${why}${highlight(a.detail, [])} · ${highlight(a.folder, [])}`
+      : (a.kind === 'Simulated' || a.kind === 'Warning') ? `${why}${highlight(a.detail, [])} · ${highlight(a.folder, [])}`
+      : `${why}${highlight(a.folder, [])}`;
+    return `<tr>
+      <td class="when">${isNaN(at) ? esc(a.at) : tf.format(at)}<small>${isNaN(at) ? '' : ago(at)}</small></td>
+      <td><span class="badge ${a.kind}">${KIND[a.kind] ?? esc(a.kind)}</span></td>
+      <td><div class="file">${highlight(a.name, terms)}</div><div class="detail">${detail}</div></td>
+    </tr>`;
+  }).join('');
+  $('empty').hidden = list.length > 0;
+  $('emptyText').textContent = all.length ? 'Nenhum arquivo com esse filtro.'
+    : source === 'day' ? 'Nada registrado nesse dia.' : 'Nada por aqui ainda. Os arquivos aparecem assim que forem tratados.';
+}
+
+function render() {
+  if (!data) return;
+  renderHeader(data); renderKpis(data); renderChart(data); renderFolders(data); renderRows(data);
+}
+
+// ------------------------------------------------------------------------------------------- dados
+async function tick() {
+  try {
+    const r = await fetch('api/status', { cache: 'no-store' });
+    if (!r.ok) {
+      const body = await r.json().catch(() => null);
+      throw new Error(`Erro no serviço (HTTP ${r.status})${body?.error ? ': ' + body.error : ''}`);
+    }
+    data = await r.json();
+    $('banner').classList.remove('show');
+    render();
+  } catch (e) {
+    $('bannerText').textContent = e?.message?.startsWith('Erro no serviço') ? e.message : 'Sem resposta do serviço. Tentando de novo…';
+    $('banner').classList.add('show');
+    $('liveDot').className = 'dot bad';
+    $('liveText').innerHTML = '<b>Sem conexão</b>';
+  }
+}
+async function loadDay() {
+  const day = $('day').value;
+  try {
+    const r = await (await fetch('api/history?day=' + encodeURIComponent(day), { cache: 'no-store' })).json();
+    dayLines = (r.lines || []).map(l => {
+      const parts = String(l.detail || '').split(' · ');
+      return { at: l.at, kind: KIND_FROM_CSV[l.kind] || l.kind, name: l.name, folder: l.folder, reason: parts.length > 1 ? parts.shift() : '', detail: parts.join(' · ') };
+    });
+    dayLoaded = day;
+  } catch { dayLines = []; }
+  render();
+}
+
 $('range').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   range = b.dataset.r;
   for (const x of $('range').children) x.classList.toggle('on', x === b);
   render();
 });
+$('source').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  source = b.dataset.s;
+  for (const x of $('source').children) x.classList.toggle('on', x === b);
+  $('day').hidden = source !== 'day';
+  if (source === 'day') loadDay(); else render();
+});
+$('day').addEventListener('change', loadDay);
+$('kind').addEventListener('change', e => { kind = e.target.value; render(); });
 $('q').addEventListener('input', e => { query = e.target.value.trim(); render(); });
+$('day').value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
+// ------------------------------------------------------------------------------------------- editor
+let edit = null;
+const blankFolder = () => ({ path: '', action: 'Delete', moveTo: '', maxNameLength: 35, countExtension: true, nameContains: [],
+  includeSubdirectories: false, cleanFolder: true, longNameRule: true, duplicateNf: 'Warn', nfPattern: '^NF0*(' + BS + 'd+)_',
+  processedPath: '', processedAuto: true, processedYesterday: true, dryRun: true });
+
+$('aEdit').addEventListener('click', async () => {
+  try {
+    const c = await api('/api/admin/config');
+    edit = { rescanMinutes: c.rescanMinutes, nfCacheDays: c.nfCacheDays, folders: c.folders };
+    $('eRescan').value = edit.rescanMinutes; $('eCache').value = edit.nfCacheDays; $('eMsg').textContent = '';
+    drawEditor(); $('editDlg').showModal();
+  } catch (e) { toast('Não deu: ' + e.message); }
+});
+const chk = (i, f, on, text) => `<label><input type="checkbox" data-i="${i}" data-f="${f}"${on ? ' checked' : ''}>${text}</label>`;
+const txt = (i, f, v, ph = '') => `<input type="text" data-i="${i}" data-f="${f}" value="${esc(v)}" placeholder="${esc(ph)}">`;
+function drawEditor() {
+  $('eFolders').innerHTML = edit.folders.map((p, i) => `<div class="ed-folder">
+    <div class="ed-head">Pasta ${i + 1}<button class="btn danger" type="button" data-remove="${i}">Tirar pasta</button></div>
+    <div class="fields">
+      <div class="wide"><label>Pasta vigiada</label>${txt(i, 'path', p.path, BS + BS + 'servidor' + BS + 'compartilhamento' + BS + 'pasta')}</div>
+      <div><label>Ação no nome longo</label><select data-i="${i}" data-f="action">
+        <option value="Delete"${p.action === 'Delete' ? ' selected' : ''}>Apagar</option><option value="Move"${p.action === 'Move' ? ' selected' : ''}>Mover</option></select></div>
+      <div><label>Mover para (se for mover)</label>${txt(i, 'moveTo', p.moveTo)}</div>
+      <div><label>Apagar com mais de (caracteres)</label><input type="number" min="10" max="250" data-i="${i}" data-f="maxNameLength" value="${p.maxNameLength}"></div>
+      <div><label>O nome precisa ter (vírgula)</label>${txt(i, 'nameContains', p.nameContains.join(', '), 'ex.: o CNPJ')}</div>
+      <div><label>NF repetida</label><select data-i="${i}" data-f="duplicateNf">
+        <option value="Warn"${p.duplicateNf === 'Warn' ? ' selected' : ''}>Só avisar (o arquivo fica)</option>
+        <option value="Delete"${p.duplicateNf === 'Delete' ? ' selected' : ''}>Apagar/mover</option>
+        <option value="Off"${p.duplicateNf === 'Off' ? ' selected' : ''}>Desligado</option></select></div>
+      <div><label>Padrão da NF (grupo 1 = número)</label>${txt(i, 'nfPattern', p.nfPattern)}</div>
+      <div class="wide"><label>Pasta de processados (opcional): move os arquivos com o texto de AAAA${BS}MM${BS}DD para a pasta LongNameJanitor dela</label>${txt(i, 'processedPath', p.processedPath)}</div>
+    </div>
+    <div class="checks"><b>Pasta vigiada</b>${chk(i, 'cleanFolder', p.cleanFolder, 'Limpar esta pasta')}${chk(i, 'longNameRule', p.longNameRule, 'Regra de nome longo')}
+      ${chk(i, 'countExtension', p.countExtension, 'Conta a extensão')}${chk(i, 'includeSubdirectories', p.includeSubdirectories, 'Incluir subpastas')}</div>
+    <div class="checks"><b>Pasta de processados</b>${chk(i, 'processedAuto', p.processedAuto, 'Mover o dia automaticamente')}${chk(i, 'processedYesterday', p.processedYesterday, 'Olhar também o dia anterior')}</div>
+    <div class="checks"><b>Segurança</b>${chk(i, 'dryRun', p.dryRun, 'Só simular nesta pasta')}</div>
+  </div>`).join('') || '<div class="empty">Nenhuma pasta. Adicione uma.</div>';
+}
+$('eFolders').addEventListener('input', e => {
+  const t = e.target, i = +t.dataset.i, f = t.dataset.f; if (!f) return;
+  const p = edit.folders[i];
+  p[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? +t.value
+    : f === 'nameContains' ? t.value.split(',').map(s => s.trim()).filter(Boolean) : t.value;
+});
+$('eFolders').addEventListener('click', e => {
+  const b = e.target.closest('[data-remove]'); if (!b) return;
+  edit.folders.splice(+b.dataset.remove, 1); drawEditor();
+});
+$('eAdd').addEventListener('click', () => { edit.folders.push(blankFolder()); drawEditor(); });
+$('eCancel').addEventListener('click', () => $('editDlg').close());
+$('eSave').addEventListener('click', async () => {
+  edit.rescanMinutes = +$('eRescan').value; edit.nfCacheDays = +$('eCache').value;
+  try { await api('/api/admin/config', edit); $('editDlg').close(); toast('Pastas salvas: aplicando agora.'); setTimeout(tick, 1600); }
+  catch (e) { $('eMsg').textContent = e.message; }
+});
+
+setAdmin(adminKey);
+if (adminKey) api('/api/admin/check', {}).catch(() => setAdmin(''));
 tick();
 setInterval(tick, 2000);
+setInterval(() => { if (source === 'day' && dayLoaded === new Date().toISOString().slice(0, 10)) loadDay(); }, 15000);
 </script>
 </body>
 </html>
