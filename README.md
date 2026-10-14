@@ -73,8 +73,9 @@ with `-RemoteAddress`.
      5080, starts it, checks every folder and prints the admin key.
 3. Open the dashboard at `http://<server>:5080`.
 
-**Update:** run the same `install.ps1` from a newer package (only the .exe is replaced; configuration and `data\` are
-kept). **Remove:** `uninstall.ps1`. Options: `.\install.ps1 -InstallDir D:\Apps\LongNameJanitor -Port 8080`.
+**Update:** double-click `ATUALIZAR.bat` in the new package. It finds the installation (service or the running .exe),
+backs it up to `backup\<date>`, replaces the .exe and the package's configuration, keeps `data\` (counters, NF cache,
+history, admin key), starts it again the same way and prints each folder's state. **Remove:** `uninstall.ps1`. Options: `.\install.ps1 -InstallDir D:\Apps\LongNameJanitor -Port 8080`.
 
 ### Configuration
 
@@ -166,7 +167,9 @@ os nomes dos arquivos; para restringir, use `"Urls": "http://localhost:5080"` ou
      porta 5080, inicia, confere cada pasta e mostra a chave de administrador.
 3. Abra o painel: `http://<servidor>:5080`.
 
-**Atualizar:** rode o mesmo `install.ps1` de um pacote mais novo (troca só o .exe; configuração e `data\` ficam).
+**Atualizar:** duplo clique no `ATUALIZAR.bat` do pacote novo. Ele acha a instalação (serviço ou o .exe aberto),
+guarda uma cópia em `backup\<data>`, troca o .exe e a configuração do pacote, mantém `data\` (contagem, cache de NF,
+histórico, chave de administrador), liga de novo do mesmo jeito e mostra o estado de cada pasta.
 **Remover:** `uninstall.ps1`. Opções: `.\install.ps1 -InstallDir D:\Apps\LongNameJanitor -Port 8080`.
 
 ### Configuração

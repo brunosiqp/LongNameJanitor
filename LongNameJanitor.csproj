@@ -17,7 +17,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
     <EmbeddedResource Include="dashboard.html" LogicalName="dashboard.html" />
-    <None Include="install.ps1;uninstall.ps1" CopyToPublishDirectory="Always" />
+    <None Include="install.ps1;uninstall.ps1;atualizar.ps1;ATUALIZAR.bat" CopyToPublishDirectory="Always" />
     <Content Update="appsettings.local.example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>
